@@ -1,0 +1,6 @@
+requests
+nextcord>=2.1.0
+python-dotenv>=0.20.0
+urllib3>=2.0.3
+pymongo>=4.4.1
+boto3
