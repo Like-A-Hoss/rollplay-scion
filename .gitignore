@@ -10,6 +10,7 @@ yarn-error.log*
 
 # Python
 __pycache__/
+_temp_pipreqsnb_folder/
 
 dist/
 
