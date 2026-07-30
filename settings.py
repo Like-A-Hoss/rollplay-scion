@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def get_param(name, default=None):
+""" def get_param(name, default=None):
     value = os.getenv(name)
     if value:
         return value
@@ -26,4 +26,4 @@ def get_param(name, default=None):
 
 # Load config from .env locally, with AWS Parameter Store as a fallback.
 SECRET_KEY = get_param('SECRET_KEY', '')
-TESTING_SERVER = get_param('TESTING_SERVER', '')
+TESTING_SERVER = get_param('TESTING_SERVER', '') """

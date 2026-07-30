@@ -1,84 +1,45 @@
 import random
 
-class Exalted_Dice():
-    def __init__(self, dice_pool:int, willpower:bool, excelence:int, stunt:bool):
+class Scion_Dice():
+    def __init__(self, dice_pool:int, enhancement:int = 0, scale:int = 0, difficulty:int =1):
         self.dice_pool = dice_pool
-        self.willpower = willpower
-        self.excelence = excelence
-        self.stunt = stunt
+        self.enhancement = enhancement
+        self.scale = scale
+        self.difficulty = difficulty
     #Set up the value modifiers
-    def set_attribute(self, numb:int):
+    def set_pool(self, numb:int):
         self.dice_pool = numb
     
-    def get_attribute(self):
+    def get_pool(self):
         return self.dice_pool
     
-    def set_excelence(self, numb:int):
-        self.excelence = numb
+    def set_enhancement(self, numb:int):
+        self.enhancement = numb
     
-    def get_excelence(self):
-        return self.excelence
+    def get_enhancement(self):
+        return self.enhancement
 
-    def set_willpower(self, value:bool):
-        self.willpower = value
-    
-    def get_willpower(self):
-        return self.willpower
+    def set_scale(self, numb:int):
+        self.scale = numb
 
-    def set_stunt(self, value:bool):
-        self.stunt = value
-    def get_stunt(self):
-        return self.stunt
+    def get_scale(self):
+        return self.scale
+
+    def set_difficulty(self, numb:int):
+        self.difficulty = numb
+
+    def get_difficulty(self):
+        return self.difficulty
 
     def basic_roll(self):
         #Rolls the number of dice set and records them to display back
-        #Sets stunt number
-        stunt_value = 0
-        if self.stunt == True:
-            stunt_value += 2
-        #else:
-        #    stunt_value = 0
-        #
-        end_dice_pool = self.dice_pool + self.excelence + stunt_value
         #set up dice roller
         results = []
-        for _ in range(end_dice_pool):
+        for _ in range(self.dice_pool):
             results.append(random.randint(1,10))
         return results
 
-    
-    def roll_withering_damage(self, raw, soak):
-        #
-        dice_pool = raw - soak
-        #set up dice roller
-        if dice_pool < 1:
-            dice_pool = 1
-        results = []
-        for _ in range(dice_pool):
-            results.append(random.randint(1,10))
-        return results
-
-    """def roll_decisive_attach(self, defence ):
-        if self.stunt >= 1:
-            stunt_value = 2
-        else:
-            stunt_value = 0
-        #
-        dice_pool = (self.attribute + self.ability + self.excelence + stunt_value) - defence
-        #set up dice roller
-        if dice_pool >= 1:
-            results = []
-            for _ in range(dice_pool):
-                results.append(random.randint(1,10))
-            return results
-        else:
-            dice_pool = 1
-            results = []
-            for _ in range(dice_pool):
-                results.append(random.randint(1,10))
-            return results """
-
-    def count_successes(self, results, dub:int, tn:int =7):
+    def count_successes(self, results,  tn:int =7):
         successes = 0
         for die in results:
             if dub == 10:
