@@ -20,6 +20,10 @@ init_list = []
 
 client = commands.Bot(intents = intents)
 
+@client.event
+async def on_ready():
+    print("Hello Papa!\n")
+    await client.clear_guild_commands(testingServerID)
 
 
 client.run(SECRET_KEY)
