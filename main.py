@@ -61,12 +61,12 @@ async def dramatic_roll(
         description="Choose the difference in scale of the action",
         choices=[
             nextcord.OptionChoice(name="0 - Normal", value=0),
-            nextcord.OptionChoice(name="1", value=1),
-            nextcord.OptionChoice(name="2", value=2),
-            nextcord.OptionChoice(name="3", value=3),
-            nextcord.OptionChoice(name="4", value=4),
-            nextcord.OptionChoice(name="5", value=5),
-            nextcord.OptionChoice(name="6", value=6),
+            nextcord.OptionChoice(name="1 - Elite", value=1),
+            nextcord.OptionChoice(name="2 - Supernatural", value=2),
+            nextcord.OptionChoice(name="3 - Incredible", value=3),
+            nextcord.OptionChoice(name="4 - Godlike", value=4),
+            nextcord.OptionChoice(name="5 - Supernal", value=5),
+            nextcord.OptionChoice(name="6 - Titanic", value=6),
         ],
     ),
     difficulty: int = 1,
@@ -87,7 +87,6 @@ async def dramatic_roll(
     results = scion_dice.roll()
     exploded_results = scion_dice.check_explode(results)
     successes = scion_dice.count_successes(results,exploded_results)
-    final_result = scion_dice.get_final_results(successes, difficulty)
     
 
     await interaction.response.send_message(

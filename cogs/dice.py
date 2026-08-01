@@ -1,4 +1,5 @@
 import random
+import cogs.scaleByFactor as scaleByFactor
 
 class ScionDice():
     def __init__(self, dice_pool:int, enhancement:int, hero_type:str, scale:int, difficulty:int, tn:int, again:int):
@@ -48,6 +49,8 @@ class ScionDice():
         successes += sum(1 for die in exploded_results if die >= self.tn)
         if successes >= 1:
             successes += self.enhancement
+            if self.scale > 0:
+                successes += scaleByFactor.narrative_scale(self.scale)
         return successes
 
     def check_botch(self, results:list, exploded_results:list = [], successes:int = 0):
@@ -69,9 +72,5 @@ class ScionDice():
                 current_die = random.randint(1, 10)
                 exploded_results.append(current_die)
         return exploded_results
-
-    def get_final_results(self, successes:int):
-        sux = successes - self.difficulty
-        return sux
     
 
