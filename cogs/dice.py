@@ -1,6 +1,6 @@
 import random
 
-class Scion_Dice():
+class ScionDice():
     def __init__(self, dice_pool:int, enhancement:int, scale_type:str, scale:int, difficulty:int, tn:int, again:int):
         self.dice_pool = dice_pool
         self.enhancement = enhancement
