@@ -1,7 +1,7 @@
 import random
 import nextcord
 
-class MessageMaker(self, hero_type:str):
+class MessageMaker(self):
     def __init__(self):
         self.dice_to_9 ={"one": "<:rolled1:1002256566717784074>", "two":"<:rolled2:1002256636066418818>", "three":"<:rolled3:1002256664692535407>", "four": "<:rolled4:1002256500607156264> ", "five": "<:rolled5:1002263017708343336> ", "six":"<:rolled6:1002263045034229870> ", "seven-bad": "<:rolled7fail:1533221453758202046 ", "seven-good": "<:rolled7:1002263065963802704> ", "eight": "<:rolled8:1002263085597343874> ", "nine": "<:rolled9:1002263106682110013> ", "ten": "<:rolled10:1002264540924358768> "}
         self.dice_10=["<:kami:1533221773720686714>", "<:Manitou:1533221860932718672>", "<:aesir:1533221551481032714>", "<:annuna:1533221575594217583>", "<:apu:1533221601418412274>", "<:atua:1533221625321754634>", "<:balahala:1533221651078975698>", "<:bogovi:1533221675146019059>", "<:devas:1533221705982546204>", "<:ilhm:1533221733358632980>", "<:kuh:1533221807736492072>", "<:loa:1533221833862676762>", "<:nemetondevos:1533221895523274893>", "<:netjer:1533221921695600650>", "<:orisha:1533221957506568212>", "<:palas:1533222023084380320>", "<:shen:1533222050884358285>", "<:tengri:1533222101329121320>", "<:teotl:1533222133696565531>", "<:theoi:1533222166370320545>", "<tuatha:1533222200398708777>", "<:yazata:1533222227028480134>, <:zemi:1533222276852617376>"]
@@ -11,6 +11,7 @@ class MessageMaker(self, hero_type:str):
         self.link_social = "https://ko-fi.com/Like_a_Hoss"
         self.sucess_message = ["You rolled well, good job!", "Nice roll, you got this!", "You rolled well, keep it up!", "You rolled well, good job!", "Nice roll, you got this!", "You rolled well, great work!", "Feel free to praise me for this roll, I deserve it!", "You rolled well, good job!", "Nice roll, you got this!", "You rolled well, keep it up!", "You rolled well, good job!", "Nice roll, you got this!", "You rolled well, great work!", "Feel free to praise me for this roll, I deserve it!"]
         self.fail_message = ["You rolled poorly, better luck next time!", "Don't blame me for your bad luck!", "Have you considered that maybe you just suck at this?", "You rolled poorly, better luck next time!", "You rolled poorly, better luck next time!", "Don't blame me for your bad luck!", "Have you considered that maybe you just suck at this?",  "Don't blame me for your bad luck!", "Have you considered that maybe you just suck at this?", "<:sweatdrop: 853663350939844618>"]
+        self.
     
     def diceReader(self, results):
         message = " "
