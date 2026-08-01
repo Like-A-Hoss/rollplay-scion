@@ -1,10 +1,10 @@
 import random
 
 class ScionDice():
-    def __init__(self, dice_pool:int, enhancement:int, scale_type:str, scale:int, difficulty:int, tn:int, again:int):
+    def __init__(self, dice_pool:int, enhancement:int, hero_type:str, scale:int, difficulty:int, tn:int, again:int):
         self.dice_pool = dice_pool
         self.enhancement = enhancement
-        self.scale_type = scale_type
+        self.hero_type = hero_type
         self.scale = scale
         self.difficulty = difficulty
         self.tn = tn
@@ -42,20 +42,17 @@ class ScionDice():
             results.append(random.randint(1,10))
         return results
 
-    def count_successes(self, results:list):
-        successes = 0
-        for die in results:
-            if die >= self.again:
-                successes += 1
-            elif die >= self.tn:
-                successes += 1
+    def count_successes(self, results:list, exploded_results:list = []):
+        # The explode step should run first, so these are the final dice values.
+        successes = sum(1 for die in results if die >= self.tn)
+        successes += sum(1 for die in exploded_results if die >= self.tn)
         if successes >= 1:
             successes += self.enhancement
-
         return successes
 
-    def check_botch(self, results:list, successes:int):
+    def check_botch(self, results:list, exploded_results:list = [], successes:int = 0):
         botch = False
+        results.append(exploded_results)
         for die in results:
             if die == 1:
                 botch = True
@@ -71,8 +68,10 @@ class ScionDice():
             while current_die >= self.again:
                 current_die = random.randint(1, 10)
                 exploded_results.append(current_die)
-        results[:] = exploded_results
-        return results
+        return exploded_results
 
+    def get_final_results(self, successes:int):
+        sux = successes - self.difficulty
+        return sux
     
 
