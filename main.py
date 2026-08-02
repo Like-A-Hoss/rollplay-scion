@@ -10,14 +10,12 @@ from settings import SECRET_KEY as SECRET_KEY
 from settings import TESTING_SERVER as testingServerID
 import cogs.dice as dice
 import cogs.embed_message_maker as message_maker
-import cogs.scaleByFactor as scaleByFactor
 
 
 intents = nextcord.Intents.default()
 intents.members = True
 intents.message_content = True
 
-init_list = []
 
 client = commands.Bot(intents=intents)
 
@@ -25,9 +23,18 @@ client = commands.Bot(intents=intents)
 async def on_ready():
     print("Hello Papa!\n")
 
-    guild = client.get_guild(int(testingServerID))
+    try:
+        guild_id = int(testingServerID)
+    except (TypeError, ValueError):
+        print(f"Invalid TESTING_SERVER value: {testingServerID}")
+        return
+    if guild_id is None:
+        print("TESTING_SERVER environment variable is not set.")
+    print (f"Using guild ID: {guild_id}")
+    
+    guild = client.get_guild(guild_id)
     if guild is None:
-        print(f"Could not find guild with ID {testingServerID}")
+        print(f"Could not find guild with ID {guild_id}")
         print("Guilds currently available to this bot:")
         for available_guild in client.guilds:
             print(f"- {available_guild.id}: {available_guild.name}")
@@ -40,34 +47,26 @@ async def on_ready():
     if channel is not None:
         await channel.send("Hello Papa!\n")
 
-    await client.clear_guild_commands(guild)
-@client.slash_command(name="dramaticRoll", description="Rolls a number of dice, adds in the enhancement and scale modifiers, then subtracts difficulty.")
+    try:
+        await client.sync_application_commands(guild_id=guild_id)
+        print(f"Synced slash commands to guild: {guild.name} ({guild.id})")
+    except Exception as exc:
+        print(f"Failed to sync slash commands for guild {guild.name} ({guild.id}): {exc}")
+
+@client.slash_command(name="dramatic_roll", description="Rolls a number of dice, adds in the enhancement and scale modifiers, then subtracts difficulty.")
 async def dramatic_roll(
     interaction: nextcord.Interaction,
     dice_pool: int,
-    enhancement: int = 0,
+    enhancement: int,
     hero_type: str = nextcord.SlashOption(
         name="hero_type",
         description="Choose the hero type",
-        choices=[
-            nextcord.OptionChoice(name="Origin", value="Origin"),
-            nextcord.OptionChoice(name="Hero", value="Hero"),
-            nextcord.OptionChoice(name="Demigod", value="Demigod"),
-            nextcord.OptionChoice(name="God", value="God"),
-        ],
+        choices=["Origin", "Hero", "Demigod", "God"],
     ),
     scale: int = nextcord.SlashOption(
         name="scale",
-        description="Choose the difference in scale of the action",
-        choices=[
-            nextcord.OptionChoice(name="0 - Normal", value=0),
-            nextcord.OptionChoice(name="1 - Elite", value=1),
-            nextcord.OptionChoice(name="2 - Supernatural", value=2),
-            nextcord.OptionChoice(name="3 - Incredible", value=3),
-            nextcord.OptionChoice(name="4 - Godlike", value=4),
-            nextcord.OptionChoice(name="5 - Supernal", value=5),
-            nextcord.OptionChoice(name="6 - Titanic", value=6),
-        ],
+        description="Choose the difference in scale for the action",
+        choices=[0, 1, 2, 3, 4, 5, 6],
     ),
     difficulty: int = 1,
     again: int = 10,
@@ -86,7 +85,7 @@ async def dramatic_roll(
 
     results = scion_dice.roll()
     exploded_results = scion_dice.check_explode(results)
-    successes = scion_dice.count_successes(results,exploded_results)
+    successes = scion_dice.count_successes(results, exploded_results)
     
 
     await interaction.response.send_message(
@@ -95,7 +94,6 @@ async def dramatic_roll(
         f"Initial roll: {results}\n"
         f"Exploded results: {exploded_results}\n"
         f"Successes: {successes}\n"
-        f"Final result: {final_result}"
     )
 
 
