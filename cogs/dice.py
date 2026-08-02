@@ -64,13 +64,12 @@ class ScionDice():
         return botch
 
     def check_explode(self, results:list):
-        final_results = []
+        exploded_results = []
         for die in results:
             current_die = die
-            final_results.append(current_die)
             while current_die >= self.again:
                 current_die = random.randint(1, 10)
-                final_results.append(current_die)
-        return final_results
+                exploded_results.append(current_die)
+        return exploded_results
     
 
