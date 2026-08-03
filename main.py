@@ -235,7 +235,7 @@ async def initiative_roll(
         )
     await interaction.response.send_message(embed=embed_response)
     
-@client.slash_command(name="attack_antagonist", description="For use when attacking an antagonist.  Antagonists have set defense values and do not roll defense dice, or get defense stunts.")
+@client.slash_command(name="attack_antagonist", description="For use when attacking an antagonist.")
 async def attack_antagonist(
     interaction: nextcord.Interaction,
     dice_pool: int,
@@ -305,9 +305,7 @@ async def attack_antagonist(
                 defense=defense
             )
     await interaction.response.send_message(embed=embed_response)    
-@client.slash_command(
-    name="attack_player",
-    description="For use when attacking a player. The attacker provides attack info; the defender chooses defense."
+@client.slash_command(name="attack_player",  description="For use when attacking a player."
 )
 async def attack_player(
     interaction: nextcord.Interaction,
