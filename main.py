@@ -84,8 +84,6 @@ async def dramatic_roll(
         tn=tn,
         again=again,
     )
-    # initiate reactive defense sequence with the targeted player
-    await reactive_defense.start_defense(interaction, antagonist_name, character_name, player, scion_dice)
     results = scion_dice.roll()
     exploded_results = scion_dice.check_explode(results)
     successes = scion_dice.count_successes(results, exploded_results)
@@ -215,7 +213,7 @@ async def initiative_roll(
         enhancement=enhancement,
         hero_type=hero_type,
         scale=scale,
-        difficulty=difficulty,
+        difficulty=0,
         tn=tn,
         again=again,
     )
@@ -228,11 +226,11 @@ async def initiative_roll(
     
     bonuses = f"Enhancement Bonus: {enhancement}\nScale Bonus: {scaleByFactor.dramatic_scale(scale)}"
     
-    embed_response = message_maker.initative(
+    embed_response = message_maker.initiative(
             interaction=interaction,
             results=results,
             bonuses=bonuses,
-            initative=successes
+            initiative=successes
         )
     await interaction.response.send_message(embed=embed_response)
     

@@ -15,10 +15,10 @@ def narrative_scale(scale:int):
     elif scale == 6:
         return 1000
 
-def dramtic_scale(scale:int):
+def dramatic_scale(scale:int):
     #this function takes in the scale factor and returns the dramatic action enhancement bonus used
     if scale == 0:
-        return 1
+        return 0
     elif scale == 1:
         return 2
     elif scale == 2:
