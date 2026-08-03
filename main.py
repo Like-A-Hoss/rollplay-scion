@@ -324,11 +324,15 @@ async def attack_player(
         description="Choose the attack type",
         choices=["Melee", "Ranged"],
     ),
-    attack_cost: int = 1,
     scale: int = nextcord.SlashOption(
         name="scale",
         description="Choose the difference in scale for the action",
         choices=[0, 1, 2, 3, 4, 5, 6],
+    ),
+    attack_cost: int = nextcord.SlashOption(
+        name="attack_cost",
+        description="Enter the roll away cost (attacker Composure or Defense)",
+        required=True,
     ),
 ):
     attack_state = {
