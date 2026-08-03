@@ -89,9 +89,9 @@ class MessageMaker():
             embed_response.set_author(name= interaction.user.name)
             embed_response.add_field(name="Successes", value=f"You had {sux} successes",inline=True)
             embed_response.add_field(name="success message", value=f"{random.choice(self.sucess_message)}", inline=False)
-            embed_response.add_field(name="difficulty", value=f"difficulty of {difficulty}", inline=True)
             embed_response.add_field(name="enhancement", value=f"enhancement bonus of {enhancement}", inline=True)
             embed_response.add_field(name="scale", value=f"scale enhancement of {scaleByFactor.dramatic_scale(scale)}", inline=True)
+            embed_response.add_field(name="difficulty", value=f"difficulty of {difficulty}", inline=True)
             embed_response.add_field(name = self.link_footer, value=self.footer_text)
             embed_response.set_footer(text = self.true_footer)
             return embed_response
@@ -102,17 +102,18 @@ class MessageMaker():
                 embed_response.set_author(name= interaction.user.name)
                 embed_response.add_field(name="Successes", value=f"You had {sux} successes",inline=True)
                 embed_response.add_field(name="success message", value=f"{random.choice(self.sucess_message)}", inline=False)
-                embed_response.add_field(name="difficulty", value=f"difficulty of {difficulty}", inline=True)
                 embed_response.add_field(name="enhancement", value=f"enhancement bonus of {enhancement}", inline=True)
                 embed_response.add_field(name="scale", value=f"scale multiplier of x{scaleByFactor.narrative_scale(scale)}", inline=True)
+                embed_response.add_field(name="difficulty", value=f"difficulty of {difficulty}", inline=True)
                 embed_response.add_field(name = self.link_footer, value=self.footer_text)
                 embed_response.set_footer(text = self.true_footer)
                 return embed_response
             
     
-    def fail_dramatic(self, interaction:nextcord.Interaction, results, sux, enhancement, scale, difficulty):
+    def fail_dramatic(self, interaction:nextcord.Interaction, results, exploded_results, sux, enhancement, scale, difficulty):
         dice = self.diceReader(results)
-        embed_response = nextcord.Embed(color=0xcc0000,title="Fail", url = self.link_social, description=dice)
+        exploded_dice = self.diceReader(exploded_results)
+        embed_response = nextcord.Embed(color=0xcc0000,title="Fail", url = self.link_social, description=dice + "\n" + "exploded dice: " + exploded_dice)
         embed_response.set_author(name= interaction.user.name)
         embed_response.add_field(name="Failure", value=random.choice(self.fail_message),inline=False)
         embed_response.add_field(name="Successes", value=f"you had {sux} successes", inline=True)
@@ -123,9 +124,10 @@ class MessageMaker():
         embed_response.set_footer(text = self.true_footer)
         return embed_response
     
-    def fail_narrative(self, interaction:nextcord.Interaction, results, sux, enhancement, scale, difficulty):
+    def fail_narrative(self, interaction:nextcord.Interaction, results, exploded_results, sux, enhancement, scale, difficulty):
             dice = self.diceReader(results)
-            embed_response = nextcord.Embed(color=0xcc0000,title="Fail", url = self.link_social, description=dice)
+            exploded_dice = self.diceReader(exploded_results)
+            embed_response = nextcord.Embed(color=0xcc0000,title="Fail", url = self.link_social, description=dice + "\n" + "exploded dice: " + exploded_dice)
             embed_response.set_author(name= interaction.user.name)
             embed_response.add_field(name="Failure", value=random.choice(self.fail_message),inline=False)
             embed_response.add_field(name="Successes", value=f"you had {sux} successes", inline=True)
@@ -142,14 +144,15 @@ class MessageMaker():
         embed_response.set_author(name= interaction.user.name)
         embed_response.add_field(name="Botched", value=random.choice(self.botch_message),inline=False)
         embed_response.add_field(name="Successes", value=f"you had {sux} successes and at least one 1", inline=True)
-        embed_response.add_field(name="difficulty", value=f"difficulty of {difficulty}", inline=True)
+        embed_response.add_field(name="difficulty", value=f"difficulty of {difficulty}", inline=False)
         embed_response.add_field(name = self.link_footer, value=self.footer_text)
         embed_response.set_footer(text = self.true_footer)
         return embed_response
 
-    def initiative(self, interaction:nextcord.Interaction, results, bonuses, initiative):
+    def initiative(self, interaction:nextcord.Interaction, results, exploded_results, bonuses, initiative):
         dice = self.diceReader(results)
-        embed_response = nextcord.Embed(color=0x1a1aff,title="Initiative", url = self.link_social, description=dice)
+        exploded_dice = self.diceReader(exploded_results)
+        embed_response = nextcord.Embed(color=0x1a1aff,title="Initiative", url = self.link_social, description=f"{dice} + {exploded_dice}")
         embed_response.set_author(name= interaction.user.name)
         embed_response.add_field(name="Initiative", value=f"You have created a slot at {initiative}",inline=False)
         embed_response.add_field(name="bonuses", value=bonuses, inline=False)

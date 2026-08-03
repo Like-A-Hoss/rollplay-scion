@@ -229,6 +229,7 @@ async def initiative_roll(
     embed_response = message_maker.initiative(
             interaction=interaction,
             results=results,
+            exploded_results=exploded_results,
             bonuses=bonuses,
             initiative=successes
         )
