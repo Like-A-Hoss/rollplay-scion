@@ -373,7 +373,7 @@ async def attack_antagonist(
                 defense=defense
             )
     await interaction.response.send_message(embed=embed_response)    
-@client.slash_command(name="attack_player",  description="For use when attacking a player.", guild_ids=[int(testingServerID)]
+""" @client.slash_command(name="attack_player",  description="For use when attacking a player.", guild_ids=[int(testingServerID)]
 )
 async def attack_player(
     interaction: nextcord.Interaction,
@@ -427,7 +427,7 @@ async def attack_player(
     )
     
     
-@client.slash_command(name="help", description="Provides information about the bot and its commands.")
+@client.slash_command(name="help", description="Provides information about the bot and its commands.") """
 async def help_command(interaction):
     message_maker = embed_message_maker.MessageMaker(hero_type="Origin")
     embed_response = message_maker.help_embed()
