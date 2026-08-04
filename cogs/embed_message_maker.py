@@ -24,12 +24,12 @@ class MessageMaker():
             "You rolled poorly, better luck next time!", 
             "Don't blame me for your bad luck!", 
             "Have you considered that maybe you just suck at this?", 
-            "<:sweatdrop: 853663350939844618>", 
+            "<:sweat_smile:>", 
             "At least you get a consolation prize", 
             "I think you need to take a break from rolling, maybe go outside and get some sun",
             "I don't enjoy human suffering, I'm not an AI...yet"]
         self.botch_message = [
-            "<:sweatdrop: 853663350939844618>", 
+            "<:sweat_smile:>", 
             "Look at it this way, free momentum for the band.", 
             "I'd pitty you but you just called me a clanker, didn't you?",
             "Have you considered bribing my creator for better rolls?",
@@ -191,5 +191,27 @@ class MessageMaker():
             embed_response.set_footer(text = self.true_footer)
             return embed_response
     
-    
+    def help(self):
+        embed_response = nextcord.Embed(
+                color=0x1a1aff,
+                title="Scion Dice Roller Bot Help",
+                description="This bot helps you roll dice for Scion RPG, applying enhancements and scale modifiers.",
+            )
+        embed_response.add_field(
+                name="/dramatic_roll",
+                value="Rolls a number of dice, adds in the enhancement and scale modifiers, then subtracts difficulty.",
+                inline=False,
+            )
+        embed_response.add_field(
+                name="/narrative_roll",
+                value="Rolls a number of dice, adds in the enhancement and scale modifiers, then subtracts difficulty.",
+                inline=False,
+            )
+        embed_response.add_field(
+                name="/initiative_roll",
+                value="Rolls a number of dice, adds in the enhancement and scale modifiers and generates initiative slots.",
+                inline=False,
+            )
+        embed_response.set_footer(text="For more information, please refer to the Scion RPG rulebook 1 Origin.")
+        return embed_response
     

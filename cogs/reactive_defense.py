@@ -1,13 +1,50 @@
 ﻿import json
 import re
 import uuid
+import traceback
 import nextcord
 from nextcord import Interaction
 
 import cogs.dice as dice
 import cogs.embed_message_maker as embed_message_maker
+from settings import REACTIVE_DEFENSE_LOG_CHANNEL
 from .reactive_json import _read_state, _write_state, _delete_state, _set_status
 from .reactive_embeds import _get_state_embed
+
+
+def _safe_preview(value: str, limit: int = 120) -> str:
+    text = str(value).replace("\n", " ")
+    if len(text) <= limit:
+        return text
+    return text[:limit] + "..."
+
+
+async def _debug_log(client: nextcord.Client, step: str, state_id: str | None = None, details: str | None = None):
+    if not REACTIVE_DEFENSE_LOG_CHANNEL:
+        return
+
+    try:
+        channel_id = int(REACTIVE_DEFENSE_LOG_CHANNEL)
+    except (TypeError, ValueError):
+        return
+
+    channel = client.get_channel(channel_id)
+    if channel is None:
+        try:
+            channel = await client.fetch_channel(channel_id)
+        except Exception:
+            return
+
+    lines = [f"[reactive_defense] step={step}"]
+    if state_id:
+        lines.append(f"state_id={state_id}")
+    if details:
+        lines.append(f"details={_safe_preview(details, 900)}")
+
+    try:
+        await channel.send("\n".join(lines))
+    except Exception:
+        return
 
 
 class HeroTypeSelect(nextcord.ui.Select):
@@ -27,6 +64,7 @@ class HeroTypeSelect(nextcord.ui.Select):
         roll_info["hero_type"] = self.values[0]
         data["roll_info"] = roll_info
         _write_state(self.state_id, data)
+        await _debug_log(interaction.client, "hero_type_selected", self.state_id, f"hero_type={self.values[0]}")
         await interaction.response.edit_message(embed=_get_state_embed(data, "Reflexive Defense Configuration"), view=ReflexiveConfigView(self.state_id))
 
 
@@ -42,6 +80,7 @@ class ScaleSelect(nextcord.ui.Select):
         roll_info["scale"] = int(self.values[0])
         data["roll_info"] = roll_info
         _write_state(self.state_id, data)
+        await _debug_log(interaction.client, "scale_selected", self.state_id, f"scale={self.values[0]}")
         await interaction.response.edit_message(embed=_get_state_embed(data, "Reflexive Defense Configuration"), view=ReflexiveConfigView(self.state_id))
 
 
@@ -105,6 +144,7 @@ class ReflexiveRollModal(nextcord.ui.Modal):
         data["defense_spent"] = None
         _write_state(self.state_id, data)
         _set_status(self.state_id, "collecting_reflexive_stunt")
+        await _debug_log(interaction.client, "reflexive_roll_complete", self.state_id, f"successes={successes}; botch={botch}")
 
         await interaction.response.edit_message(embed=_get_state_embed(data, "Choose a Reflexive Stunt"), view=ReflexiveStuntView(self.state_id))
 
@@ -131,6 +171,7 @@ class DefenseSpendModal(nextcord.ui.Modal):
         data["defense_spent"] = spend
         _write_state(self.state_id, data)
         _set_status(self.state_id, "collecting_armor_values")
+        await _debug_log(interaction.client, "stunt_defense_selected", self.state_id, f"spend={spend}")
 
         await interaction.response.edit_message(embed=_get_state_embed(data, "Set Armor and Resolve"), view=ArmorResolveView(self.state_id))
 
@@ -181,6 +222,7 @@ class DiveCoverModal(nextcord.ui.Modal):
         data["cover_damage_taken"] = damage_taken
         _write_state(self.state_id, data)
         _set_status(self.state_id, "collecting_armor_values")
+        await _debug_log(interaction.client, "stunt_dive_cover_selected", self.state_id, f"cover={cover_type}; keep={keep}; damage_taken={damage_taken}")
 
         await interaction.response.edit_message(embed=_get_state_embed(data, "Set Armor and Resolve"), view=ArmorResolveView(self.state_id))
 
@@ -201,6 +243,7 @@ class RollAwayModal(nextcord.ui.Modal):
         data["defense_spent"] = 0
         _write_state(self.state_id, data)
         _set_status(self.state_id, "collecting_armor_values")
+        await _debug_log(interaction.client, "stunt_roll_away_selected", self.state_id)
 
         await interaction.response.edit_message(embed=_get_state_embed(data, "Set Armor and Resolve"), view=ArmorResolveView(self.state_id))
 
@@ -226,6 +269,7 @@ class ArmorModal(nextcord.ui.Modal):
         data["armor"] = {"soft": soft, "hard": hard}
         _write_state(self.state_id, data)
         _set_status(self.state_id, "ready_to_resolve")
+        await _debug_log(interaction.client, "armor_set", self.state_id, f"soft={soft}; hard={hard}")
 
         await interaction.response.edit_message(embed=_get_state_embed(data, "Ready to Resolve Attack"), view=ArmorResolveView(self.state_id))
 
@@ -257,6 +301,7 @@ class FullDefenseModal(nextcord.ui.Modal):
         data["cover_damage_taken"] = cover_damage
         _write_state(self.state_id, data)
         _set_status(self.state_id, "collecting_armor_values")
+        await _debug_log(interaction.client, "full_defense_details_set", self.state_id, f"defense={defense_value}; cover_damage={cover_damage}")
 
         await interaction.response.edit_message(embed=_get_state_embed(data, "Set Armor and Resolve"), view=ArmorResolveView(self.state_id))
 
@@ -333,6 +378,7 @@ class DefenseChoiceView(nextcord.ui.View):
     @nextcord.ui.button(label="Reflexive Defense", style=nextcord.ButtonStyle.primary)
     async def reflexive_defense(self, button: nextcord.ui.Button, interaction: Interaction):
         _set_status(self.state_id, "collecting_reflexive_info")
+        await _debug_log(interaction.client, "defense_choice_reflexive", self.state_id)
         await interaction.response.edit_message(embed=_get_state_embed(_read_state(self.state_id), "Reflexive Defense Setup"), view=ReflexiveConfigView(self.state_id))
 
     @nextcord.ui.button(label="Full Defense", style=nextcord.ButtonStyle.secondary)
@@ -341,13 +387,16 @@ class DefenseChoiceView(nextcord.ui.View):
         data["context"] = "full_defense"
         _write_state(self.state_id, data)
         _set_status(self.state_id, "collecting_full_defense")
+        await _debug_log(interaction.client, "defense_choice_full", self.state_id)
         await interaction.response.edit_message(embed=_get_state_embed(data, "Full Defense Setup"), view=FullDefenseView(self.state_id))
 
 
 async def _resolve_attack(interaction: Interaction, state_id: str):
+    await _debug_log(interaction.client, "resolve_attack_begin", state_id)
     data = _read_state(state_id)
     attack = data.get("attack") or {}
     if not attack:
+        await _debug_log(interaction.client, "resolve_attack_missing_attack", state_id)
         await interaction.response.send_message("Attack data missing.", ephemeral=True)
         return
 
@@ -401,11 +450,20 @@ async def _resolve_attack(interaction: Interaction, state_id: str):
     maker = embed_message_maker.MessageMaker(hero_type=attack_params.get("hero_type", "Hero"))
 
     if botch:
-        embed = maker.attack(interaction=interaction, results=results, sux=attack_successes, success="botch", bonuses="", defense=defense_spent)
+        embed = maker.attack(
+            interaction=interaction,
+            results=results,
+            exploded_results=exploded,
+            sux=attack_successes,
+            success="botch",
+            bonuses="",
+            defense=defense_spent,
+        )
     elif result_type == "success":
         embed = maker.attack(
             interaction=interaction,
             results=results,
+            exploded_results=exploded,
             sux=remaining,
             success="success",
             bonuses=f"Enhancement Bonus: +{attack_params.get('enhancement',0)}\nScale Bonus: +{attack_params.get('scale',0)}",
@@ -415,8 +473,9 @@ async def _resolve_attack(interaction: Interaction, state_id: str):
         embed = maker.attack(
             interaction=interaction,
             results=results,
+            exploded_results=exploded,
             sux=0,
-            success="fail",
+            success="failure",
             bonuses=f"Enhancement Bonus: +{attack_params.get('enhancement',0)}\nScale Bonus: +{attack_params.get('scale',0)}",
             defense=defense_spent,
         )
@@ -426,11 +485,14 @@ async def _resolve_attack(interaction: Interaction, state_id: str):
     if channel:
         await channel.send(embed=embed)
         await interaction.response.send_message("Attack resolved and posted.", ephemeral=True)
+        await _debug_log(interaction.client, "resolve_attack_posted", state_id, f"result_type={result_type}; remaining={remaining}")
     else:
         await interaction.response.send_message(embed=embed)
+        await _debug_log(interaction.client, "resolve_attack_posted_no_channel", state_id, f"result_type={result_type}; remaining={remaining}")
 
     _set_status(state_id, "attack_resolved")
     _delete_state(state_id)
+    await _debug_log(interaction.client, "resolve_attack_state_deleted", state_id)
 
 
 async def start_defense(
@@ -443,6 +505,13 @@ async def start_defense(
     attack_cost: int,
     scion_dice: dice.ScionDice | None = None,
 ):
+    await _debug_log(
+        interaction.client,
+        "start_defense_begin",
+        None,
+        f"attacker={interaction.user.name}; target={player.display_name}; attack_type={attack_type}; attack_cost={attack_cost}",
+    )
+
     if attack_params is None and scion_dice is not None:
         attack_params = {
             "dice_pool": scion_dice.dice_pool,
@@ -475,6 +544,7 @@ async def start_defense(
         },
     }
     _write_state(state_id, data)
+    await _debug_log(interaction.client, "state_created", state_id)
 
     embed = nextcord.Embed(title="Defensive Reaction", color=0x1a1aff)
     embed.add_field(name="Attacker", value=interaction.user.name, inline=True)
@@ -489,25 +559,32 @@ async def start_defense(
     try:
         await interaction.response.defer(ephemeral=True)
         deferred = True
+        await _debug_log(interaction.client, "interaction_deferred", state_id)
     except Exception:
         deferred = False
+        await _debug_log(interaction.client, "interaction_defer_failed", state_id, traceback.format_exc())
 
     # Try to DM the player. If that fails (DMs closed), fall back to channel mention.
     sent_dm = False
     try:
         await player.send(embed=embed, view=view)
         sent_dm = True
+        await _debug_log(interaction.client, "dm_sent", state_id, f"player_id={player.id}")
     except Exception:
         sent_dm = False
+        await _debug_log(interaction.client, "dm_failed", state_id, traceback.format_exc())
 
     if sent_dm:
         msg = f"Sent defensive prompt to {player.display_name} via DM."
         if deferred:
             await interaction.followup.send(msg, ephemeral=True)
+            await _debug_log(interaction.client, "followup_sent_dm_notice", state_id)
         else:
             try:
                 await interaction.response.send_message(msg, ephemeral=True)
+                await _debug_log(interaction.client, "response_sent_dm_notice", state_id)
             except Exception:
+                await _debug_log(interaction.client, "response_failed_dm_notice", state_id, traceback.format_exc())
                 pass
     else:
         # Fallback: post in the channel and mention the player
@@ -518,13 +595,18 @@ async def start_defense(
         if channel:
             await channel.send(f"{player.mention}", embed=embed, view=view)
             msg = f"Could not DM {player.display_name}; posted prompt in channel."
+            await _debug_log(interaction.client, "channel_fallback_posted", state_id, f"channel_id={channel.id}")
         else:
             msg = f"Could not deliver prompt to {player.display_name}."
+            await _debug_log(interaction.client, "channel_fallback_missing", state_id)
 
         if deferred:
             await interaction.followup.send(msg, ephemeral=True)
+            await _debug_log(interaction.client, "followup_sent_fallback_notice", state_id)
         else:
             try:
                 await interaction.response.send_message(msg, ephemeral=True)
+                await _debug_log(interaction.client, "response_sent_fallback_notice", state_id)
             except Exception:
+                await _debug_log(interaction.client, "response_failed_fallback_notice", state_id, traceback.format_exc())
                 pass

@@ -5,10 +5,12 @@ except ModuleNotFoundError:
 
 import nextcord
 from nextcord.ext import commands
+import traceback
 
 from cogs import scaleByFactor
 from settings import SECRET_KEY as SECRET_KEY
 from settings import TESTING_SERVER as testingServerID
+from settings import REACTIVE_DEFENSE_LOG_CHANNEL as reactiveDefenseLogChannel
 import cogs.dice as dice
 import cogs.embed_message_maker as embed_message_maker
 import cogs.reactive_defense as reactive_defense
@@ -20,6 +22,27 @@ intents.message_content = True
 
 
 client = commands.Bot(intents=intents)
+
+
+async def _send_debug_channel_message(message: str):
+    if not reactiveDefenseLogChannel:
+        return
+    try:
+        channel_id = int(reactiveDefenseLogChannel)
+    except (TypeError, ValueError):
+        return
+
+    channel = client.get_channel(channel_id)
+    if channel is None:
+        try:
+            channel = await client.fetch_channel(channel_id)
+        except Exception:
+            return
+
+    try:
+        await channel.send(message[:1900])
+    except Exception:
+        return
 
 @client.event
 async def on_ready():
@@ -54,6 +77,34 @@ async def on_ready():
         print(f"Synced slash commands to guild: {guild.name} ({guild.id})")
     except Exception as exc:
         print(f"Failed to sync slash commands for guild {guild.name} ({guild.id}): {exc}")
+
+
+@client.event
+async def on_application_command_error(interaction: nextcord.Interaction, error: Exception):
+    command_name = "unknown"
+    try:
+        command_name = interaction.application_command.qualified_name
+    except Exception:
+        pass
+
+    trace = traceback.format_exc()
+    await _send_debug_channel_message(
+        "\n".join(
+            [
+                "[slash_error]",
+                f"command={command_name}",
+                f"user={interaction.user}",
+                f"error={error}",
+                f"trace={trace[:1400]}",
+            ]
+        )
+    )
+
+    try:
+        if not interaction.response.is_done():
+            await interaction.response.send_message("Something went wrong while processing this command.", ephemeral=True)
+    except Exception:
+        pass
 
 @client.slash_command(name="dramatic_roll", description="Rolls a number of dice, adds in the enhancement and scale modifiers, then subtracts difficulty.")
 async def dramatic_roll(
@@ -112,6 +163,7 @@ async def dramatic_roll(
             embed_response = message_maker.fail_dramatic(
                 interaction=interaction,
                 results=results,
+                exploded_results=exploded_results,
                 sux=successes,
                 enhancement=enhancement,
                 scale=scale,
@@ -180,6 +232,7 @@ async def narrative_roll(
             embed_response = message_maker.fail_dramatic(
                 interaction=interaction,
                 results=results,
+                exploded_results=exploded_results,
                 sux=successes,
                 enhancement=enhancement,
                 scale=scale,
@@ -280,6 +333,7 @@ async def attack_antagonist(
         embed_response = message_maker.attack(
             interaction=interaction,
             results=results,
+            exploded_results=exploded_results,
             sux=successes,
             success="success",
             bonuses=f"Enhancement Bonus: +{enhancement}\nScale Bonus: +{scaleByFactor.dramatic_scale(scale)}extra successes",
@@ -290,6 +344,7 @@ async def attack_antagonist(
             embed_response = message_maker.attack(
                 interaction=interaction,
                 results=results,
+                exploded_results=exploded_results,
                 sux=successes,
                 success="botch",
                 bonuses="No bonuses applied",
@@ -301,7 +356,7 @@ async def attack_antagonist(
                 results=results,
                 exploded_results = exploded_results,
                 sux=successes,
-                success="fail",
+                success="failure",
                 bonuses=f"Enhancement Bonus: +{enhancement}\nScale Bonus: +{scaleByFactor.dramatic_scale(scale)}extra successes",
                 defense=defense
             )
@@ -361,29 +416,10 @@ async def attack_player(
     
     
 @client.slash_command(name="help", description="Provides information about the bot and its commands.")
-async def help_command(interaction: nextcord.Interaction):
-    embed_response = nextcord.Embed(
-        color=0x1a1aff,
-        title="Scion Dice Roller Bot Help",
-        description="This bot helps you roll dice for Scion RPG, applying enhancements and scale modifiers.",
-    )
-    embed_response.add_field(
-        name="/dramatic_roll",
-        value="Rolls a number of dice, adds in the enhancement and scale modifiers, then subtracts difficulty.",
-        inline=False,
-    )
-    embed_response.add_field(
-        name="/narrative_roll",
-        value="Rolls a number of dice, adds in the enhancement and scale modifiers, then subtracts difficulty.",
-        inline=False,
-    )
-    embed_response.add_field(
-        name="/initiative_roll",
-        value="Rolls a number of dice, adds in the enhancement and scale modifiers and generates initiative slots.",
-        inline=False,
-    )
-    embed_response.set_footer(text="For more information, please refer to the Scion RPG rulebook 1 Origin.")
+async def help_command(interaction):
+    message_maker = embed_message_maker.MessageMaker(hero_type="Origin")
+    embed_response = message_maker.help_embed()
     
-    await interaction.response.send_message(embed=embed_response)
+    await interaction.response.send_message(embed=embed_response, ephemeral=True)
 
 client.run(SECRET_KEY)
