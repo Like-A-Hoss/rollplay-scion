@@ -305,7 +305,7 @@ async def attack_antagonist(
                 defense=defense
             )
     await interaction.response.send_message(embed=embed_response)    
-@client.slash_command(name="attack_player",  description="For use when attacking a player."
+@client.slash_command(name="attack_player",  description="For use when attacking a player.", guild_ids=[int(testingServerID)]
 )
 async def attack_player(
     interaction: nextcord.Interaction,
@@ -348,7 +348,15 @@ async def attack_player(
         "status": "Collecting Defense type",
     }
 
-    await reactive_defense.start_defense(interaction, player, attack_state)
+    await reactive_defense.start_defense(
+        interaction,
+        antagonist_name,
+        character_name,
+        player,
+        attack_state,
+        attack_state.get("attack_type"),
+        attack_state.get("attack_cost"),
+    )
     
     
 @client.slash_command(name="help", description="Provides information about the bot and its commands.")
