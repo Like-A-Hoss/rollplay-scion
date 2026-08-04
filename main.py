@@ -305,6 +305,11 @@ async def attack_antagonist(
     interaction: nextcord.Interaction,
     dice_pool: int,
     enhancement: int,
+    defense: int = nextcord.SlashOption(
+        name="defense",
+        description="The defense value of the antagonist being attacked.",
+        required=True
+    ),
     hero_type: str = nextcord.SlashOption(
         name="hero_type",
         description="Choose the hero type",
@@ -317,11 +322,6 @@ async def attack_antagonist(
     ),
     difficulty: int = 1,
     again: int = 10,
-    defense: int = nextcord.SlashOption(
-        name="defense",
-        description="The defense value of the antagonist being attacked.",
-        required=True
-    )
 ):
     tn = 8 if hero_type in {"Origin", "Hero"} else 7
 
@@ -372,8 +372,10 @@ async def attack_antagonist(
                 bonuses=f"Enhancement Bonus: +{enhancement}\nScale Bonus: +{scaleByFactor.dramatic_scale(scale)}extra successes",
                 defense=defense
             )
-    await interaction.response.send_message(embed=embed_response)    
-""" @client.slash_command(name="attack_player",  description="For use when attacking a player.", guild_ids=[int(testingServerID)]
+    await interaction.response.send_message(embed=embed_response)
+
+
+@client.slash_command(name="attack_player",  description="For use when attacking a player.", guild_ids=[int(testingServerID)]
 )
 async def attack_player(
     interaction: nextcord.Interaction,
@@ -425,10 +427,10 @@ async def attack_player(
         attack_state.get("attack_type"),
         attack_state.get("attack_cost"),
     )
-    
-    
-@client.slash_command(name="help", description="Provides information about the bot and its commands.") """
-async def help_command(interaction):
+
+
+@client.slash_command(name="help", description="Provides information about the bot and its commands.")
+async def hep_command(interaction):
     message_maker = embed_message_maker.MessageMaker(hero_type="Origin")
     embed_response = message_maker.help_embed()
     
