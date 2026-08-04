@@ -75,8 +75,20 @@ async def on_ready():
     try:
         await client.sync_application_commands(guild_id=guild_id)
         print(f"Synced slash commands to guild: {guild.name} ({guild.id})")
+        await _send_debug_channel_message(
+            f"[startup] Synced slash commands to guild: {guild.name} ({guild.id})"
+        )
     except Exception as exc:
         print(f"Failed to sync slash commands for guild {guild.name} ({guild.id}): {exc}")
+        await _send_debug_channel_message(
+            "\n".join(
+                [
+                    "[startup_error] command sync failed",
+                    f"guild={guild.name} ({guild.id})",
+                    f"error={exc}",
+                ]
+            )
+        )
 
 
 @client.event
@@ -370,6 +382,11 @@ async def attack_player(
     player: nextcord.Member,
     attacker_dice_pool: int,
     enhancement: int,
+    attack_cost: int = nextcord.SlashOption(
+        name="attack_cost",
+        description="Enter the roll away cost (attacker Composure or Defense)",
+        required=True,
+    ),
     attacker_hero_type: str = nextcord.SlashOption(
         name="hero_type",
         description="Choose the antagonist's level of power",
@@ -384,11 +401,6 @@ async def attack_player(
         name="scale",
         description="Choose the difference in scale for the action",
         choices=[0, 1, 2, 3, 4, 5, 6],
-    ),
-    attack_cost: int = nextcord.SlashOption(
-        name="attack_cost",
-        description="Enter the roll away cost (attacker Composure or Defense)",
-        required=True,
     ),
 ):
     attack_state = {
