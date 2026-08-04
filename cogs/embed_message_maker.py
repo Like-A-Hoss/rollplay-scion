@@ -160,10 +160,11 @@ class MessageMaker():
         embed_response.set_footer(text = self.true_footer)
         return embed_response    
     
-    def attack(self, interaction:nextcord.Interaction, results, sux, success, bonuses, defense):
+    def attack(self, interaction:nextcord.Interaction, results, exploded_results, sux, success, bonuses, defense):
         if success == "success":
             dice = self.diceReader(results)
-            embed_response = nextcord.Embed(color=0x00ff55,title="SUCCESS", url = self.link_social, description=dice)
+            exploded_dice = self.diceReader(exploded_results)
+            embed_response = nextcord.Embed(color=0x00ff55,title="SUCCESS", url = self.link_social, description=f"{dice} + {exploded_dice}")
             embed_response.set_author(name= interaction.user.name)
             embed_response.add_field(name="Successes", value=f"You had {sux} against defense {defense}",inline=False)
             embed_response.add_field(name="bonuses", value=bonuses, inline=False)
@@ -172,7 +173,8 @@ class MessageMaker():
             return embed_response
         elif success == "failure":
             dice = self.diceReader(results)
-            embed_response = nextcord.Embed(color=0xcc0000,title="FAIL", url = self.link_social, description=dice)
+            exploded_dice = self.diceReader(exploded_results)
+            embed_response = nextcord.Embed(color=0xcc0000,title="FAIL", url = self.link_social, description=f"{dice} + {exploded_dice}")
             embed_response.set_author(name= interaction.user.name)
             embed_response.add_field(name="Fail", value=f"You had {sux} against defense {defense}",inline=False)
             embed_response.add_field(name="bonuses", value=bonuses, inline=False)

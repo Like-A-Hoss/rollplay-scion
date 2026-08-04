@@ -299,6 +299,7 @@ async def attack_antagonist(
             embed_response = message_maker.attack(
                 interaction=interaction,
                 results=results,
+                exploded_results = exploded_results,
                 sux=successes,
                 success="fail",
                 bonuses=f"Enhancement Bonus: +{enhancement}\nScale Bonus: +{scaleByFactor.dramatic_scale(scale)}extra successes",

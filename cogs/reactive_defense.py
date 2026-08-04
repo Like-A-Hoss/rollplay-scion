@@ -484,8 +484,47 @@ async def start_defense(
     embed.add_field(name="Instructions", value="Choose Reflexive Defense or Full Defense to begin.", inline=False)
 
     view = DefenseChoiceView(state_id)
-    await player.send(embed=embed, view=view)
+
+    # Defer the interaction response to avoid Discord "interaction failed" timeout
     try:
-        await interaction.response.send_message(f"Sent defensive prompt to {player.display_name}", ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
+        deferred = True
     except Exception:
-        pass
+        deferred = False
+
+    # Try to DM the player. If that fails (DMs closed), fall back to channel mention.
+    sent_dm = False
+    try:
+        await player.send(embed=embed, view=view)
+        sent_dm = True
+    except Exception:
+        sent_dm = False
+
+    if sent_dm:
+        msg = f"Sent defensive prompt to {player.display_name} via DM."
+        if deferred:
+            await interaction.followup.send(msg, ephemeral=True)
+        else:
+            try:
+                await interaction.response.send_message(msg, ephemeral=True)
+            except Exception:
+                pass
+    else:
+        # Fallback: post in the channel and mention the player
+        channel = interaction.channel
+        if channel is None and interaction.guild is not None:
+            channel = interaction.guild.system_channel
+
+        if channel:
+            await channel.send(f"{player.mention}", embed=embed, view=view)
+            msg = f"Could not DM {player.display_name}; posted prompt in channel."
+        else:
+            msg = f"Could not deliver prompt to {player.display_name}."
+
+        if deferred:
+            await interaction.followup.send(msg, ephemeral=True)
+        else:
+            try:
+                await interaction.response.send_message(msg, ephemeral=True)
+            except Exception:
+                pass
