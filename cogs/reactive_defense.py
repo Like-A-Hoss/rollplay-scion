@@ -155,19 +155,24 @@ class ReflexiveRollModal(nextcord.ui.Modal):
         }
         data["stunt_choice"] = None
         data["defense_spent"] = None
+        data["final_defense"] = 1
+        data["dive_for_cover"] = False
+        data["roll_away_selected"] = False
+        data["cover_type"] = data.get("cover_type")
+        data["cover_hard_armor"] = int(data.get("cover_hard_armor", 0) or 0)
         _write_state(self.state_id, data)
         _set_status(self.state_id, "collecting_reflexive_stunt")
         _queue_debug_log(interaction.client, "reflexive_roll_complete", self.state_id, f"successes={successes}; botch={botch}")
 
-        await interaction.response.edit_message(embed=_get_state_embed(data, "Choose a Reflexive Stunt"), view=ReflexiveStuntView(self.state_id))
+        await interaction.response.edit_message(embed=_get_state_embed(data, "Configure Reflexive Stunts"), view=ReflexiveStuntView(self.state_id))
 
 
 class DefenseSpendModal(nextcord.ui.Modal):
     def __init__(self, state_id: str, max_successes: int):
-        super().__init__("Spend Defense Successes")
+        super().__init__("Defense Stunt")
         self.state_id = state_id
         self.max_successes = max_successes
-        self.add_item(nextcord.ui.TextInput(label=f"Successes to spend on defense (0-{max_successes})", required=True))
+        self.add_item(nextcord.ui.TextInput(label=f"Successes to spend on Defense (0-{max_successes})", required=True))
 
     async def callback(self, interaction: Interaction):
         data = _read_state(self.state_id)
@@ -182,11 +187,47 @@ class DefenseSpendModal(nextcord.ui.Modal):
 
         data["stunt_choice"] = "defense"
         data["defense_spent"] = spend
+        data["final_defense"] = 1 + spend
         _write_state(self.state_id, data)
-        _set_status(self.state_id, "collecting_armor_values")
         _queue_debug_log(interaction.client, "stunt_defense_selected", self.state_id, f"spend={spend}")
 
-        await interaction.response.edit_message(embed=_get_state_embed(data, "Set Armor and Resolve"), view=ArmorResolveView(self.state_id))
+        await interaction.response.edit_message(
+            embed=_get_state_embed(data, "Configure Reflexive Stunts"),
+            view=ReflexiveStuntView(self.state_id),
+        )
+
+
+class CoverTypeSelect(nextcord.ui.Select):
+    def __init__(self, state_id: str):
+        options = [
+            nextcord.SelectOption(label="Expendable", value="expendable"),
+            nextcord.SelectOption(label="Light", value="light"),
+            nextcord.SelectOption(label="Heavy", value="heavy"),
+            nextcord.SelectOption(label="Full", value="full"),
+        ]
+        super().__init__(
+            placeholder="Choose cover type (for Dive for Cover)",
+            min_values=1,
+            max_values=1,
+            options=options,
+            custom_id=f"cover_type_{state_id}",
+        )
+        self.state_id = state_id
+
+    async def callback(self, interaction: Interaction):
+        data = _read_state(self.state_id)
+        cover_type = self.values[0]
+        cover_values = {"expendable": 1, "light": 4, "heavy": 10, "full": 10}
+
+        data["cover_type"] = cover_type
+        data["cover_hard_armor"] = cover_values[cover_type]
+        _write_state(self.state_id, data)
+        _queue_debug_log(interaction.client, "cover_type_selected", self.state_id, f"cover={cover_type}")
+
+        await interaction.response.edit_message(
+            embed=_get_state_embed(data, "Configure Reflexive Stunts"),
+            view=ReflexiveStuntView(self.state_id),
+        )
 
 
 class DiveCoverModal(nextcord.ui.Modal):
@@ -230,6 +271,7 @@ class DiveCoverModal(nextcord.ui.Modal):
         cover_values = {"expendable": 1, "light": 4, "heavy": 10, "full": 10}
         data["stunt_choice"] = "dive_for_cover"
         data["defense_spent"] = keep
+        data["final_defense"] = 1 + keep
         data["cover_type"] = cover_type
         data["cover_hard_armor"] = cover_values[cover_type]
         data["cover_damage_taken"] = damage_taken
@@ -254,6 +296,7 @@ class RollAwayModal(nextcord.ui.Modal):
 
         data["stunt_choice"] = "roll_away"
         data["defense_spent"] = 0
+        data["final_defense"] = 1
         _write_state(self.state_id, data)
         _set_status(self.state_id, "collecting_armor_values")
         _queue_debug_log(interaction.client, "stunt_roll_away_selected", self.state_id)
@@ -310,6 +353,7 @@ class FullDefenseModal(nextcord.ui.Modal):
 
         data["context"] = "full_defense"
         data["manual_defense"] = defense_value
+        data["final_defense"] = defense_value
         data["manual_stunts"] = stunts
         data["cover_damage_taken"] = cover_damage
         _write_state(self.state_id, data)
@@ -335,6 +379,12 @@ class ReflexiveStuntView(nextcord.ui.View):
     def __init__(self, state_id: str):
         super().__init__(timeout=None)
         self.state_id = state_id
+        data = _read_state(state_id)
+        attack_type = data.get("attack", {}).get("attack_type", "Melee")
+        if attack_type != "Ranged":
+            self.remove_item(self.dive_for_cover)
+        else:
+            self.add_item(CoverTypeSelect(state_id))
 
     @nextcord.ui.button(label="Defense", style=nextcord.ButtonStyle.primary)
     async def defense(self, button: nextcord.ui.Button, interaction: Interaction):
@@ -348,15 +398,68 @@ class ReflexiveStuntView(nextcord.ui.View):
         if data.get("attack", {}).get("attack_type", "Melee") != "Ranged":
             await interaction.response.send_message("Dive for cover is only available against ranged attacks.", ephemeral=True)
             return
-        successes = data.get("defense_roll", {}).get("successes", 0)
+        successes = int(data.get("defense_roll", {}).get("successes", 0) or 0)
         if successes < 1:
             await interaction.response.send_message("You need at least 1 defense success to use Dive for Cover.", ephemeral=True)
             return
-        await interaction.response.send_modal(DiveCoverModal(self.state_id, successes))
+
+        if data.get("dive_for_cover"):
+            await interaction.response.send_message("Dive for Cover is already selected.", ephemeral=True)
+            return
+
+        data["dive_for_cover"] = True
+        data["stunt_choice"] = "dive_for_cover"
+        data["defense_roll"]["successes"] = max(0, successes - 1)
+
+        current_spend = int(data.get("defense_spent", 0) or 0)
+        if current_spend > data["defense_roll"]["successes"]:
+            current_spend = data["defense_roll"]["successes"]
+            data["defense_spent"] = current_spend
+
+        data["final_defense"] = 1 + current_spend
+        _write_state(self.state_id, data)
+        _queue_debug_log(interaction.client, "stunt_dive_cover_selected", self.state_id, "cost_applied=1_success")
+        await interaction.response.edit_message(
+            embed=_get_state_embed(data, "Configure Reflexive Stunts"),
+            view=ReflexiveStuntView(self.state_id),
+        )
 
     @nextcord.ui.button(label="Roll Away", style=nextcord.ButtonStyle.secondary)
     async def roll_away(self, button: nextcord.ui.Button, interaction: Interaction):
-        await interaction.response.send_modal(RollAwayModal(self.state_id))
+        data = _read_state(self.state_id)
+        selected = bool(data.get("roll_away_selected", False))
+        data["roll_away_selected"] = not selected
+        if data["roll_away_selected"]:
+            data["stunt_choice"] = "roll_away"
+        _write_state(self.state_id, data)
+        _queue_debug_log(interaction.client, "stunt_roll_away_toggled", self.state_id, f"enabled={not selected}")
+        await interaction.response.edit_message(
+            embed=_get_state_embed(data, "Configure Reflexive Stunts"),
+            view=ReflexiveStuntView(self.state_id),
+        )
+
+    @nextcord.ui.button(label="Continue", style=nextcord.ButtonStyle.success)
+    async def continue_to_armor(self, button: nextcord.ui.Button, interaction: Interaction):
+        data = _read_state(self.state_id)
+        defense_spent = int(data.get("defense_spent", 0) or 0)
+        data["final_defense"] = 1 + defense_spent
+
+        if data.get("roll_away_selected"):
+            data["stunt_choice"] = "roll_away"
+        elif data.get("dive_for_cover"):
+            data["stunt_choice"] = "dive_for_cover"
+        elif defense_spent > 0:
+            data["stunt_choice"] = "defense"
+        else:
+            data["stunt_choice"] = None
+
+        _write_state(self.state_id, data)
+        _set_status(self.state_id, "collecting_armor_values")
+        _queue_debug_log(interaction.client, "stunt_continue_to_armor", self.state_id)
+        await interaction.response.edit_message(
+            embed=_get_state_embed(data, "Set Armor and Finalize Defense"),
+            view=ArmorResolveView(self.state_id),
+        )
 
 
 class FullDefenseView(nextcord.ui.View):

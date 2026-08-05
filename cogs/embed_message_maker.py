@@ -91,7 +91,7 @@ class MessageMaker():
             exploded_dice = self.diceReader(exploded_results)
             embed_response = nextcord.Embed(color=0x00ff55,title="SUCCESS", url = self.link_social, description="rolled dice: " + dice + "\n" + "exploded dice: " + exploded_dice)
             embed_response.set_author(name= interaction.user.name)
-            embed_response.add_field(name="Successes", value=f"You had {sux} successes",inline=True)
+            embed_response.add_field(name="Successes", value=f"You had {sux} net successes",inline=True)
             embed_response.add_field(name="success message", value=f"{random.choice(self.sucess_message)}", inline=False)
             embed_response.add_field(name="enhancement", value=f"enhancement bonus of {enhancement}", inline=True)
             embed_response.add_field(name="scale", value=f"scale enhancement of {scaleByFactor.dramatic_scale(scale)}", inline=True)
@@ -195,6 +195,43 @@ class MessageMaker():
             embed_response.add_field(name = self.link_footer, value=self.footer_text)
             embed_response.set_footer(text = self.true_footer)
             return embed_response
+        
+    def attack_player_success(self, interaction:nextcord.Interaction, character, results, exploded_results, sux, success, bonuses, defense, stunt_choice, armor):
+        if success == "success":
+            dice = self.diceReader(results)
+            exploded_dice = self.diceReader(exploded_results)
+            embed_response = nextcord.Embed(color=0x00ff55,title="Hit", url = self.link_social, description=f"{dice} + {exploded_dice}")
+            embed_response.set_author(name= interaction.user.name)
+            embed_response.add_field(name="Successes", value=f"You have {sux} net successes against defense {defense}",inline=False)
+            embed_response.add_field(name="bonuses", value=bonuses, inline=False)
+            embed_response.add_field(name="stunt choice", value=stunt_choice, inline=True)
+            embed_response.add_field(name="armor", value=f"{character} has \n Soft: {armor.get('soft',0)}, Hard: {armor.get('hard',0)}", inline=True)
+            if "Dive for Cover" in stunt_choice:
+                embed_response.add_field(name="Cover Armor", value=f"{character} is behind  {armor.get('cover_hard',0)}", inline=True)
+            embed_response.add_field(name = self.link_footer, value=self.footer_text, inline=False)
+            embed_response.set_footer(text = self.true_footer)
+            return embed_response
+    def attack_player_fail(self, interaction:nextcord.Interaction, character, results, exploded_results, sux, success, bonuses, defense):
+        if success == "failure":
+            dice = self.diceReader(results)
+            exploded_dice = self.diceReader(exploded_results)
+            embed_response = nextcord.Embed(color=0xcc0000,title="Miss", url = self.link_social, description=f"{dice} + {exploded_dice}")
+            embed_response.set_author(name= interaction.user.name)
+            embed_response.add_field(name="Fail", value=f"You had {sux} against {character}'s defense {defense}",inline=False)
+            embed_response.add_field(name="bonuses", value=bonuses, inline=False)
+            embed_response.add_field(name = self.link_footer, value=self.footer_text, inline=False)
+            embed_response.set_footer(text = self.true_footer)
+            return embed_response
+        if success == "botch":
+            dice = self.diceReader(results)
+            embed_response = nextcord.Embed(color=0xcc6600, title="BOTCHED", url = self.link_social, description=dice)
+            embed_response.set_author(name= interaction.user.name)
+            embed_response.add_field(name=" ", value=random.choice(self.botch_message),inline=False)
+            embed_response.add_field(name="Botch", value=f"You had {sux} and rolled a 1.  You botched the attack against {character}'s defense {defense}",inline=False)
+            embed_response.add_field(name="bonuses", value=bonuses, inline=False)
+            embed_response.add_field(name = self.link_footer, value=self.footer_text, inline=False)
+            embed_response.set_footer(text = self.true_footer)
+            return embed_response
     
     def help(self):
         embed_response = nextcord.Embed(
@@ -224,7 +261,17 @@ class MessageMaker():
             )
         embed_response.add_field(
             name="/attack_player",
-            value=" Still in Testing and not released to public yet.  The Story Guide fills out the attack information including the name of the NPC Attacking, and the PC being attacked, and the players discord ID can then be chosen.  The player is notified and allowed to roll their defense and select defensive stunts.  The Story Guide is then notified with the results of their roll, and what stunts the defending player has and their armor values.",
+            value="Starts the attack process.  The Story Guide fills out the attack information including the name of the NPC Attacking, and the PC being attacked, and the players discord ID can then be chosen.  The player is notified and allowed to roll their defense and select defensive stunts.  The Story Guide is then notified with the results of their roll, and what stunts the defending player has and their armor values.",
+            inline=False,
+        )
+        embed_response.add_field(
+            name="/resolve_attack",
+            value="finalizes the attack process, shows the results of the attack and the defense, and any information about stunts and armor that may help the story guide resolve the attack..",
+            inline=False,
+        )
+        embed_response.add_field(
+            name="/help",
+            value="Displays this help message.",
             inline=False,
         )
         embed_response.add_field(name="Note", value="For more information, please refer to the Scion RPG rulebook 1 Origin.", inline=False)
