@@ -319,7 +319,6 @@ async def attack_antagonist(
     ),
     hero_type: str = hero_level_option(),
     scale: int = scale_option(),
-    difficulty: int = 1,
     again: int = 10,
 ):
     tn = get_tn(hero_type)
@@ -329,11 +328,10 @@ async def attack_antagonist(
         enhancement=enhancement,
         hero_type=hero_type,
         scale=scale,
-        difficulty=difficulty,
+        difficulty=defense,
         tn=tn,
         again=again,
     )
-    scion_dice.set_difficulty(defense)
     results = scion_dice.roll()
     exploded_results = scion_dice.check_explode(results)
     successes = scion_dice.count_successes(results, exploded_results)
