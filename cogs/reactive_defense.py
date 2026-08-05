@@ -383,8 +383,32 @@ class ArmorResolveView(nextcord.ui.View):
         _set_status(self.state_id, "defense_ready")
         data = _read_state(self.state_id)
         _queue_debug_log(interaction.client, "defense_finalized", self.state_id)
+
+        # Notify the original game channel so the GM/attacker has the state id for resolution.
+        attack = data.get("attack", {})
+        channel_id = attack.get("channel_id")
+        if channel_id:
+            channel = interaction.client.get_channel(channel_id)
+            if channel is None:
+                try:
+                    channel = await interaction.client.fetch_channel(channel_id)
+                except Exception:
+                    channel = None
+
+            if channel:
+                antagonist_name = data.get("antagonist_name", "Unknown")
+                character_name = data.get("character_name", "Unknown")
+                await channel.send(
+                    "\n".join(
+                        [
+                            f"Attack ID: {self.state_id}",
+                            f"For {antagonist_name} on {character_name}",
+                        ]
+                    )
+                )
+
         await interaction.response.edit_message(
-            content=f"Defense saved. State ID: `{self.state_id}`. Ask attacker to resolve from main command.",
+            content="Defense saved. The GM/attacker has been notified in the game channel.",
             embed=_get_state_embed(data, "Defense Ready"),
             view=None,
         )
