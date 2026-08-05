@@ -23,6 +23,37 @@ intents.message_content = True
 
 client = commands.Bot(intents=intents)
 
+HERO_LEVEL_CHOICES = ["Origin", "Hero", "Demigod", "God", "God Feat of Scale"]
+SCALE_CHOICES = [0, 1, 2, 3, 4, 5, 6]
+HERO_TYPE_DESCRIPTION = "Choose the hero type, or antagonist power level"
+
+
+def hero_level_option(description: str = HERO_TYPE_DESCRIPTION):
+    return nextcord.SlashOption(
+        name="hero_type",
+        description=description,
+        choices=HERO_LEVEL_CHOICES,
+    )
+
+
+def scale_option():
+    return nextcord.SlashOption(
+        name="scale",
+        description="Choose the difference in scale for the action",
+        choices=SCALE_CHOICES,
+    )
+
+
+def get_tn(hero_type: str) -> int:
+    if hero_type in {"Origin", "Hero"}:
+        return 8
+    elif hero_type in {"Demigod", "God"}:
+        return 7
+    elif hero_type == "God Feat of Scale":
+        return 6
+    else:
+        raise ValueError(f"Invalid hero type: {hero_type}")
+
 
 async def _send_debug_channel_message(message: str):
     if not reactiveDefenseLogChannel:
@@ -123,20 +154,12 @@ async def dramatic_roll(
     interaction: nextcord.Interaction,
     dice_pool: int,
     enhancement: int,
-    hero_type: str = nextcord.SlashOption(
-        name="hero_type",
-        description="Choose the hero type",
-        choices=["Origin", "Hero", "Demigod", "God"],
-    ),
-    scale: int = nextcord.SlashOption(
-        name="scale",
-        description="Choose the difference in scale for the action",
-        choices=[0, 1, 2, 3, 4, 5, 6],
-    ),
+    hero_type: str = hero_level_option(),
+    scale: int = scale_option(),
     difficulty: int = 1,
     again: int = 10,
 ):
-    tn = 8 if hero_type in {"Origin", "Hero"} else 7
+    tn = get_tn(hero_type)
 
     scion_dice = dice.ScionDice(
         dice_pool=dice_pool,
@@ -191,20 +214,12 @@ async def narrative_roll(
     interaction: nextcord.Interaction,
     dice_pool: int,
     enhancement: int,
-    hero_type: str = nextcord.SlashOption(
-        name="hero_type",
-        description="Choose the hero type",
-        choices=["Origin", "Hero", "Demigod", "God"],
-    ),
-    scale: int = nextcord.SlashOption(
-        name="scale",
-        description="Choose the difference in scale for the action",
-        choices=[0, 1, 2, 3, 4, 5, 6],
-    ),
+    hero_type: str = hero_level_option(),
+    scale: int = scale_option(),
     difficulty: int = 1,
     again: int = 10,
 ):
-    tn = 8 if hero_type in {"Origin", "Hero"} else 7
+    tn = get_tn(hero_type)
 
     scion_dice = dice.ScionDice(
         dice_pool=dice_pool,
@@ -259,19 +274,11 @@ async def initiative_roll(
     interaction: nextcord.Interaction,
     dice_pool: int,
     enhancement: int,
-    hero_type: str = nextcord.SlashOption(
-        name="hero_type",
-        description="Choose the hero type",
-        choices=["Origin", "Hero", "Demigod", "God"],
-    ),
-    scale: int = nextcord.SlashOption(
-        name="scale",
-        description="Choose the difference in scale for the action",
-        choices=[0, 1, 2, 3, 4, 5, 6]
-    ),
+    hero_type: str = hero_level_option(),
+    scale: int = scale_option(),
     again: int = 10,
 ):
-    tn = 8 if hero_type in {"Origin", "Hero"} else 7
+    tn = get_tn(hero_type)
 
     scion_dice = dice.ScionDice(
         dice_pool=dice_pool,
@@ -310,20 +317,12 @@ async def attack_antagonist(
         description="The defense value of the antagonist being attacked.",
         required=True
     ),
-    hero_type: str = nextcord.SlashOption(
-        name="hero_type",
-        description="Choose the hero type",
-        choices=["Origin", "Hero", "Demigod", "God"],
-    ),
-    scale: int = nextcord.SlashOption(
-        name="scale",
-        description="Choose the difference in scale for the action",
-        choices=[0, 1, 2, 3, 4, 5, 6]
-    ),
+    hero_type: str = hero_level_option(),
+    scale: int = scale_option(),
     difficulty: int = 1,
     again: int = 10,
 ):
-    tn = 8 if hero_type in {"Origin", "Hero"} else 7
+    tn = get_tn(hero_type)
 
     scion_dice = dice.ScionDice(
         dice_pool=dice_pool,
@@ -389,21 +388,13 @@ async def attack_player(
         description="Enter the roll away cost (attacker Composure or Defense)",
         required=True,
     ),
-    attacker_hero_type: str = nextcord.SlashOption(
-        name="hero_type",
-        description="Choose the antagonist's level of power",
-        choices=["Origin", "Hero", "Demigod", "God"],
-    ),
+    attacker_hero_type: str = hero_level_option("Choose the antagonist's level of power"),
     attack_type: str = nextcord.SlashOption(
         name="attack_type",
         description="Choose the attack type",
         choices=["Melee", "Ranged"],
     ),
-    scale: int = nextcord.SlashOption(
-        name="scale",
-        description="Choose the difference in scale for the action",
-        choices=[0, 1, 2, 3, 4, 5, 6],
-    ),
+    scale: int = scale_option(),
 ):
     attack_state = {
         "attacker_name": antagonist_name,
