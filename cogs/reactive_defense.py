@@ -7,9 +7,8 @@ import nextcord
 from nextcord import Interaction
 
 import cogs.dice as dice
-import cogs.embed_message_maker as embed_message_maker
 from settings import REACTIVE_DEFENSE_LOG_CHANNEL
-from .reactive_json import _read_state, _write_state, _delete_state, _set_status
+from .reactive_json import _read_state, _write_state, _set_status
 from .reactive_embeds import _get_state_embed
 
 
@@ -67,6 +66,7 @@ class HeroTypeSelect(nextcord.ui.Select):
             nextcord.SelectOption(label="Hero", value="Hero"),
             nextcord.SelectOption(label="Demigod", value="Demigod"),
             nextcord.SelectOption(label="God", value="God"),
+            nextcord.SelectOption(label="God Feat of Strength", value="God Feat of Strength"),
         ]
         super().__init__(placeholder="Choose Hero Type", min_values=1, max_values=1, options=options, custom_id=f"hero_type_{state_id}")
         self.state_id = state_id
@@ -378,9 +378,16 @@ class ArmorResolveView(nextcord.ui.View):
     async def set_armor(self, button: nextcord.ui.Button, interaction: Interaction):
         await interaction.response.send_modal(ArmorModal(self.state_id))
 
-    @nextcord.ui.button(label="Resolve Attack", style=nextcord.ButtonStyle.danger)
-    async def resolve_attack(self, button: nextcord.ui.Button, interaction: Interaction):
-        await _resolve_attack(interaction, self.state_id)
+    @nextcord.ui.button(label="Finalize Defense", style=nextcord.ButtonStyle.success)
+    async def finalize_defense(self, button: nextcord.ui.Button, interaction: Interaction):
+        _set_status(self.state_id, "defense_ready")
+        data = _read_state(self.state_id)
+        _queue_debug_log(interaction.client, "defense_finalized", self.state_id)
+        await interaction.response.edit_message(
+            content=f"Defense saved. State ID: `{self.state_id}`. Ask attacker to resolve from main command.",
+            embed=_get_state_embed(data, "Defense Ready"),
+            view=None,
+        )
 
 
 class DefenseChoiceView(nextcord.ui.View):
@@ -404,119 +411,14 @@ class DefenseChoiceView(nextcord.ui.View):
         await interaction.response.edit_message(embed=_get_state_embed(data, "Full Defense Setup"), view=FullDefenseView(self.state_id))
 
 
-async def _resolve_attack(interaction: Interaction, state_id: str):
-    _queue_debug_log(interaction.client, "resolve_attack_begin", state_id)
-    data = _read_state(state_id)
-    attack = data.get("attack") or {}
-    if not attack:
-        _queue_debug_log(interaction.client, "resolve_attack_missing_attack", state_id)
-        await interaction.response.send_message("Attack data missing.", ephemeral=True)
-        return
-
-    attack_params = attack.get("attack_params", {})
-    scion = dice.ScionDice(
-        dice_pool=attack_params.get("dice_pool", 0),
-        enhancement=attack_params.get("enhancement", 0),
-        hero_type=attack_params.get("hero_type", "Hero"),
-        scale=attack_params.get("scale", 0),
-        difficulty=0,
-        tn=attack_params.get("tn", 8),
-        again=attack_params.get("again", 10),
-    )
-    results = scion.roll()
-    exploded = scion.check_explode(results)
-    attack_successes = scion.count_successes(results, exploded)
-    botch = scion.check_botch(results, exploded, attack_successes)
-
-    defense_successes = data.get("defense_roll", {}).get("successes", 0)
-    context = data.get("context", "reflexive")
-    stunt_choice = data.get("stunt_choice")
-    defense_spent = int(data.get("defense_spent", 0) or 0)
-    if context == "full_defense":
-        defense_spent = int(data.get("manual_defense", 0) or 0)
-
-    armor = data.get("armor", {})
-    soft = int(armor.get("soft", 0) or 0)
-    hard = int(armor.get("hard", 0) or 0)
-    cover_hard = int(data.get("cover_hard_armor", 0) or 0)
-    hard += cover_hard
-
-    roll_away_cost = int(attack.get("attack_cost", 0) or 0)
-    remaining = attack_successes
-
-    if botch:
-        result_type = "botch"
-    elif stunt_choice == "roll_away":
-        if defense_successes >= roll_away_cost:
-            remaining = 0
-            result_type = "success"
-        else:
-            remaining = max(0, attack_successes - roll_away_cost)
-            result_type = "failure" if remaining == 0 else "success"
-    else:
-        remaining = max(0, attack_successes - defense_spent)
-        if remaining > 0:
-            remaining = max(0, remaining - hard)
-            remaining = max(0, remaining - soft)
-        result_type = "success" if remaining > 0 else "failure"
-
-    maker = embed_message_maker.MessageMaker(hero_type=attack_params.get("hero_type", "Hero"))
-
-    if botch:
-        embed = maker.attack(
-            interaction=interaction,
-            results=results,
-            exploded_results=exploded,
-            sux=attack_successes,
-            success="botch",
-            bonuses="",
-            defense=defense_spent,
-        )
-    elif result_type == "success":
-        embed = maker.attack(
-            interaction=interaction,
-            results=results,
-            exploded_results=exploded,
-            sux=remaining,
-            success="success",
-            bonuses=f"Enhancement Bonus: +{attack_params.get('enhancement',0)}\nScale Bonus: +{attack_params.get('scale',0)}",
-            defense=defense_spent,
-        )
-    else:
-        embed = maker.attack(
-            interaction=interaction,
-            results=results,
-            exploded_results=exploded,
-            sux=0,
-            success="failure",
-            bonuses=f"Enhancement Bonus: +{attack_params.get('enhancement',0)}\nScale Bonus: +{attack_params.get('scale',0)}",
-            defense=defense_spent,
-        )
-
-    channel_id = attack.get("channel_id")
-    channel = interaction.client.get_channel(channel_id) if channel_id else interaction.channel
-    if channel:
-        await channel.send(embed=embed)
-        await interaction.response.send_message("Attack resolved and posted.", ephemeral=True)
-        _queue_debug_log(interaction.client, "resolve_attack_posted", state_id, f"result_type={result_type}; remaining={remaining}")
-    else:
-        await interaction.response.send_message(embed=embed)
-        _queue_debug_log(interaction.client, "resolve_attack_posted_no_channel", state_id, f"result_type={result_type}; remaining={remaining}")
-
-    _set_status(state_id, "attack_resolved")
-    _delete_state(state_id)
-    _queue_debug_log(interaction.client, "resolve_attack_state_deleted", state_id)
-
-
 async def start_defense(
     interaction: Interaction,
     antagonist_name: str,
     character_name: str,
     player: nextcord.Member,
-    attack_params: dict | None,
+    attack_params: dict,
     attack_type: str,
     attack_cost: int,
-    scion_dice: dice.ScionDice | None = None,
 ):
     _queue_debug_log(
         interaction.client,
@@ -524,20 +426,6 @@ async def start_defense(
         None,
         f"attacker={interaction.user.name}; target={player.display_name}; attack_type={attack_type}; attack_cost={attack_cost}",
     )
-
-    if attack_params is None and scion_dice is not None:
-        attack_params = {
-            "dice_pool": scion_dice.dice_pool,
-            "enhancement": scion_dice.enhancement,
-            "hero_type": scion_dice.hero_type,
-            "scale": scion_dice.scale,
-            "difficulty": scion_dice.difficulty,
-            "tn": scion_dice.tn,
-            "again": scion_dice.again,
-        }
-
-    if attack_params is None:
-        attack_params = {}
 
     attack_params["attack_type"] = attack_type
 
@@ -623,3 +511,5 @@ async def start_defense(
             except Exception:
                 _queue_debug_log(interaction.client, "response_failed_fallback_notice", state_id, traceback.format_exc())
                 pass
+
+    return state_id

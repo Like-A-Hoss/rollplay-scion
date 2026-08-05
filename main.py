@@ -11,6 +11,7 @@ from cogs import scaleByFactor
 from settings import SECRET_KEY as SECRET_KEY
 from settings import TESTING_SERVER as testingServerID
 from settings import REACTIVE_DEFENSE_LOG_CHANNEL as reactiveDefenseLogChannel
+from cogs.reactive_json import _read_state, _delete_state, _set_status
 import cogs.dice as dice
 import cogs.embed_message_maker as embed_message_maker
 import cogs.reactive_defense as reactive_defense
@@ -381,8 +382,8 @@ async def attack_player(
     player: nextcord.Member,
     attacker_dice_pool: int,
     enhancement: int,
-    attack_cost: int = nextcord.SlashOption(
-        name="attack_cost",
+    rollaway_cost: int = nextcord.SlashOption(
+        name="rollaway_cost",
         description="Enter the roll away cost (attacker Composure or Defense)",
         required=True,
     ),
@@ -393,30 +394,152 @@ async def attack_player(
         choices=["Melee", "Ranged"],
     ),
     scale: int = scale_option(),
+    again: int = 10,
 ):
-    attack_state = {
-        "attacker_name": antagonist_name,
-        "target_name": character_name,
-        "target_id": player.id,
-        "attacker_dice_pool": attacker_dice_pool,
-        "attacker_hero_type": attacker_hero_type,
-        "attack_type": attack_type,
-        "attack_cost": attack_cost,
-        "attack_scale": scale,
+    tn = get_tn(attacker_hero_type)
+    attack_params = {
+        "dice_pool": attacker_dice_pool,
         "enhancement": enhancement,
-        "status": "Collecting Defense type",
+        "hero_type": attacker_hero_type,
+        "scale": scale,
+        "difficulty": 0,
+        "tn": tn,
+        "again": again,
     }
 
-    await reactive_defense.start_defense(
+    state_id = await reactive_defense.start_defense(
         interaction,
         antagonist_name,
         character_name,
         player,
-        attack_state,
-        attack_state.get("attack_type"),
-        attack_state.get("attack_cost"),
+        attack_params,
+        attack_type,
+        rollaway_cost,
+    )
+    await _send_debug_channel_message(
+        f"[attack_player] created reactive defense state: {state_id}"
     )
 
+
+@client.slash_command(
+    name="resolve_player_attack",
+    description="Resolve a queued player attack after defender finalizes their defense.",
+    guild_ids=[int(testingServerID)],
+)
+async def resolve_player_attack(
+    interaction: nextcord.Interaction,
+    state_id: str = nextcord.SlashOption(
+        name="state_id",
+        description="Reactive defense state id to resolve",
+        required=True,
+    ),
+):
+    state = _read_state(state_id)
+    if not state:
+        await interaction.response.send_message("No state found for that ID.", ephemeral=True)
+        return
+
+    status = state.get("status")
+    if status != "defense_ready":
+        await interaction.response.send_message(
+            f"State is not ready yet (current status: {status}).",
+            ephemeral=True,
+        )
+        return
+
+    attack = state.get("attack") or {}
+    attack_params = attack.get("attack_params", {})
+    if not attack_params:
+        await interaction.response.send_message("Attack data missing from state.", ephemeral=True)
+        return
+
+    scion_dice = dice.ScionDice(
+        dice_pool=int(attack_params.get("dice_pool", 0) or 0),
+        enhancement=int(attack_params.get("enhancement", 0) or 0),
+        hero_type=attack_params.get("hero_type", "Hero"),
+        scale=int(attack_params.get("scale", 0) or 0),
+        difficulty=0,
+        tn=int(attack_params.get("tn", 8) or 8),
+        again=int(attack_params.get("again", 10) or 10),
+    )
+    results = scion_dice.roll()
+    exploded_results = scion_dice.check_explode(results)
+    attack_successes = scion_dice.count_successes(results, exploded_results)
+    botched = scion_dice.check_botch(results, exploded_results, attack_successes)
+
+    defense_successes = int(state.get("defense_roll", {}).get("successes", 0) or 0)
+    context = state.get("context", "reflexive")
+    stunt_choice = state.get("stunt_choice")
+    defense_spent = int(state.get("defense_spent", 0) or 0)
+    if context == "full_defense":
+        defense_spent = int(state.get("manual_defense", 0) or 0)
+
+    armor = state.get("armor", {})
+    soft = int(armor.get("soft", 0) or 0)
+    hard = int(armor.get("hard", 0) or 0)
+    hard += int(state.get("cover_hard_armor", 0) or 0)
+    rollaway_cost = int(attack.get("attack_cost", 0) or 0)
+
+    remaining = attack_successes
+    if botched:
+        result_type = "botch"
+    elif stunt_choice == "roll_away":
+        if defense_successes >= rollaway_cost:
+            remaining = 0
+            result_type = "success"
+        else:
+            remaining = max(0, attack_successes - rollaway_cost)
+            result_type = "failure" if remaining == 0 else "success"
+    else:
+        remaining = max(0, attack_successes - defense_spent)
+        if remaining > 0:
+            remaining = max(0, remaining - hard)
+            remaining = max(0, remaining - soft)
+        result_type = "success" if remaining > 0 else "failure"
+
+    message_maker = embed_message_maker.MessageMaker(hero_type=attack_params.get("hero_type", "Hero"))
+    if botched:
+        embed_response = message_maker.attack(
+            interaction=interaction,
+            results=results,
+            exploded_results=exploded_results,
+            sux=attack_successes,
+            success="botch",
+            bonuses="No bonuses applied",
+            defense=defense_spent,
+        )
+    elif result_type == "success":
+        embed_response = message_maker.attack(
+            interaction=interaction,
+            results=results,
+            exploded_results=exploded_results,
+            sux=remaining,
+            success="success",
+            bonuses=f"Enhancement Bonus: +{attack_params.get('enhancement', 0)}\nScale Bonus: +{attack_params.get('scale', 0)}",
+            defense=defense_spent,
+        )
+    else:
+        embed_response = message_maker.attack(
+            interaction=interaction,
+            results=results,
+            exploded_results=exploded_results,
+            sux=0,
+            success="failure",
+            bonuses=f"Enhancement Bonus: +{attack_params.get('enhancement', 0)}\nScale Bonus: +{attack_params.get('scale', 0)}",
+            defense=defense_spent,
+        )
+
+    channel_id = attack.get("channel_id")
+    channel = client.get_channel(channel_id) if channel_id else interaction.channel
+    if channel:
+        await channel.send(embed=embed_response)
+        await interaction.response.send_message("Attack resolved and posted.", ephemeral=True)
+    else:
+        await interaction.response.send_message(embed=embed_response)
+
+    _set_status(state_id, "attack_resolved")
+    _delete_state(state_id)
+    
 
 @client.slash_command(name="help", description="Provides information about the bot and its commands.")
 async def hep_command(interaction):
