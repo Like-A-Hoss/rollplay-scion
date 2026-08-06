@@ -11,7 +11,7 @@ from cogs import scaleByFactor
 from settings import SECRET_KEY as SECRET_KEY
 from settings import TESTING_SERVER as testingServerID
 from settings import REACTIVE_DEFENSE_LOG_CHANNEL as reactiveDefenseLogChannel
-from cogs.reactive_json import _read_state, _delete_state, _set_status
+from cogs.player_attack_resolver import resolve_player_attack_state
 import cogs.dice as dice
 import cogs.embed_message_maker as embed_message_maker
 import cogs.reactive_defense as reactive_defense
@@ -434,107 +434,8 @@ async def attack_player_resolve(
         required=True,
     ),
 ):
-    state = _read_state(state_id)
-    if not state:
-        await interaction.response.send_message("No state found for that ID.", ephemeral=True)
-        return
-
-    status = state.get("status")
-    if status != "defense_ready":
-        await interaction.response.send_message(
-            f"Defender is not ready yet (current status: {status}).",
-            ephemeral=True,
-        )
-        return
-
-    attack = state.get("attack") or {}
-    attack_params = attack.get("attack_params", {})
-    if not attack_params:
-        await interaction.response.send_message("Attack data missing from state.", ephemeral=True)
-        return
-
-    scion_dice = dice.ScionDice(
-        dice_pool=int(attack_params.get("dice_pool", 0) or 0),
-        enhancement=int(attack_params.get("enhancement", 0) or 0),
-        hero_type=attack_params.get("hero_type", "Hero"),
-        scale=int(attack_params.get("scale", 0) or 0),
-        difficulty=int(attack_params.get("final_defense", 1) or 1),
-        tn=int(attack_params.get("tn", 8) or 8),
-        again=int(attack_params.get("again", 10) or 10),
-    )
-    results = scion_dice.roll()
-    exploded_results = scion_dice.check_explode(results)
-    attack_successes = scion_dice.count_successes(results, exploded_results)
-    botched = scion_dice.check_botch(results, exploded_results, attack_successes)
-
-    defense_successes = int(state.get("defense_roll", {}).get("successes", 0) or 0)
-    stunt_choice = state.get("stunt_choice")
-    defense_spent = int(state.get("defense_spent", 0) or 0)
-    final_defense = int(state.get("final_defense", 1) or 1)
-
-    armor = state.get("armor", {})
-    soft = int(armor.get("soft", 0) or 0)
-    hard = int(armor.get("hard", 0) or 0)
-    cover_health = int(state.get("cover_hard_armor", 0) or 0)
-    rollaway_cost = int(attack.get("attack_cost", 0) or 0)
-
-    remaining = attack_successes
-    if botched:
-        result_type = "botch"
-    else: 
-        remaining -= final_defense
-        if remaining > 0:
-            result_type = "success"
-        else:
-            result_type = "failure"
-
-    message_maker = embed_message_maker.MessageMaker(hero_type=attack_params.get("hero_type", "Hero"))
-    if botched:
-        embed_response = message_maker.attack_player_fail(
-            character=state.get("character_name", "Unknown"),
-            interaction=interaction,
-            results=results,
-            exploded_results=exploded_results,
-            sux=attack_successes,
-            success="botch",
-            bonuses="No bonuses applied",
-            defense=final_defense,
-        )
-    elif result_type == "success":
-        embed_response = message_maker.attack_player_success(
-            interaction=interaction,
-            results=results,
-            exploded_results=exploded_results,
-            sux=remaining,
-            success="success",
-            bonuses=f"Enhancement Bonus: +{attack_params.get('enhancement', 0)}\nScale Bonus: +{attack_params.get('scale', 0)}",
-            defense=final_defense,
-            stunt_choice=stunt_choice,
-            armor=armor,
-            character=state.get("character_name", "Unknown")
-        )
-    else:
-        embed_response = message_maker.attack_player_fail(
-            character=state.get("character_name", "Unknown"),
-            interaction=interaction,
-            results=results,
-            exploded_results=exploded_results,
-            sux=0,
-            success="failure",
-            bonuses=f"Enhancement Bonus: +{attack_params.get('enhancement', 0)}\nScale Bonus: +{attack_params.get('scale', 0)}",
-            defense=final_defense,
-        )
-
-    channel_id = attack.get("channel_id")
-    channel = client.get_channel(channel_id) if channel_id else interaction.channel
-    if channel:
-        await channel.send(embed=embed_response)
-        await interaction.response.send_message("Attack resolved and posted.", ephemeral=True)
-    else:
-        await interaction.response.send_message(embed=embed_response)
-
-    _set_status(state_id, "attack_resolved")
-    _delete_state(state_id)
+    _, message = await resolve_player_attack_state(client, interaction, state_id)
+    await interaction.response.send_message(message, ephemeral=True)
     
 
 @client.slash_command(name="help", description="Provides information about the bot and its commands.")

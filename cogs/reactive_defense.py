@@ -10,6 +10,7 @@ import cogs.dice as dice
 from settings import REACTIVE_DEFENSE_LOG_CHANNEL
 from .reactive_json import _read_state, _write_state, _set_status
 from .reactive_embeds import _get_state_embed
+from .player_attack_resolver import resolve_player_attack_state
 
 
 _DEBUG_TASKS: set[asyncio.Task] = set()
@@ -151,6 +152,7 @@ class ReflexiveRollModal(nextcord.ui.Modal):
             "results": results,
             "exploded": exploded,
             "successes": successes,
+            "generated_successes": successes,
             "botch": botch,
         }
         data["stunt_choice"] = None
@@ -483,6 +485,41 @@ class ArmorResolveView(nextcord.ui.View):
 
     @nextcord.ui.button(label="Finalize Defense", style=nextcord.ButtonStyle.success)
     async def finalize_defense(self, button: nextcord.ui.Button, interaction: Interaction):
+        data = _read_state(self.state_id)
+        if not data:
+            await interaction.response.edit_message(
+                content="Defense state was not found. Ask the GM to rerun the attack.",
+                embed=None,
+                view=None,
+            )
+            _queue_debug_log(interaction.client, "defense_finalize_missing_state", self.state_id)
+            return
+
+        if data.get("context") != "full_defense":
+            defense_roll = data.get("defense_roll", {})
+            generated_successes = int(defense_roll.get("generated_successes", defense_roll.get("successes", 0)) or 0)
+            defense_spent = int(data.get("defense_spent", 0) or 0)
+            dive_cost = 1 if data.get("dive_for_cover") else 0
+            total_spent = defense_spent + dive_cost
+
+            if total_spent > generated_successes:
+                await interaction.response.edit_message(
+                    content=(
+                        "You have spent more successes than you rolled. "
+                        f"Rolled: {generated_successes}, Spent: {total_spent}. "
+                        "Please adjust your stunt selections and try again."
+                    ),
+                    embed=_get_state_embed(data, "Configure Reflexive Stunts"),
+                    view=ReflexiveStuntView(self.state_id),
+                )
+                _queue_debug_log(
+                    interaction.client,
+                    "defense_finalize_blocked_spend_overflow",
+                    self.state_id,
+                    f"generated={generated_successes}; spent={total_spent}",
+                )
+                return
+
         _set_status(self.state_id, "defense_ready")
         data = _read_state(self.state_id)
         _queue_debug_log(interaction.client, "defense_finalized", self.state_id)
@@ -511,10 +548,20 @@ class ArmorResolveView(nextcord.ui.View):
                 )
 
         await interaction.response.edit_message(
-            content="Defense saved. The GM/attacker has been notified in the game channel.",
+            content="Defense saved. Attempting auto-resolve now.",
             embed=_get_state_embed(data, "Defense Ready"),
             view=None,
         )
+
+        ok, message = await resolve_player_attack_state(interaction.client, interaction, self.state_id)
+        _queue_debug_log(interaction.client, "defense_auto_resolve_result", self.state_id, f"ok={ok}; message={message}")
+        if ok:
+            await interaction.followup.send("Auto-resolve completed and posted to the game channel.", ephemeral=True)
+        else:
+            await interaction.followup.send(
+                f"Auto-resolve could not complete: {message} Use /attack_player_resolve with this attack ID: {self.state_id}",
+                ephemeral=True,
+            )
 
 
 class DefenseChoiceView(nextcord.ui.View):
