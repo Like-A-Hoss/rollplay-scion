@@ -373,8 +373,7 @@ async def attack_antagonist(
     await interaction.response.send_message(embed=embed_response)
 
 
-@client.slash_command(name="attack_player",  description="For use when attacking a player.", guild_ids=[int(testingServerID)]
-)
+@client.slash_command(name="attack_player",  description="For use when attacking a player.")
 async def attack_player(
     interaction: nextcord.Interaction,
     antagonist_name: str,
