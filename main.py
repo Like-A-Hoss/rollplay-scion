@@ -15,6 +15,7 @@ from cogs.player_attack_resolver import resolve_player_attack_state
 import cogs.dice as dice
 import cogs.embed_message_maker as embed_message_maker
 import cogs.reactive_defense as reactive_defense
+from dice_options import dicepool_option as dicepool, hero_level_option as hero_level, scale_option as scale, divinity_dice_option as divinity_dice, again_option as again, enhancement_option as enhancement
 
 
 intents = nextcord.Intents.default()
@@ -23,44 +24,12 @@ intents.message_content = True
 
 
 client = commands.Bot(intents=intents)
-
+# SlashOption constants
 HERO_LEVEL_CHOICES = ["Origin", "Hero", "Demigod", "God", "God Feat of Scale"]
 SCALE_CHOICES = [0, 1, 2, 3, 4, 5, 6]
 HERO_TYPE_DESCRIPTION = "Choose the hero type, or antagonist power level"
 DIVINITY_DICE_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-
-def dicepool_option():
-    description: str = "Enter the number of dice to roll, do not subtract divinity dice, there is a separate option to declare a number of dice as divinity dice."
-    return nextcord.SlashOption(
-        name="dice_pool",
-        description=description,
-        required=True,
-    )
-
-def hero_level_option(description: str = HERO_TYPE_DESCRIPTION):
-    return nextcord.SlashOption(
-        name="hero_type",
-        description=description,
-        choices=HERO_LEVEL_CHOICES,
-    )
-
-
-def scale_option():
-    return nextcord.SlashOption(
-        name="scale",
-        description="Choose the difference in scale for the action",
-        choices=SCALE_CHOICES,
-    )
-    
-def divinity_dice_option():
-    return nextcord.SlashOption(
-        name="divinity_dice",
-        description="Enter the number of dice converted to divinity dice (0-10).  This is only used for Demigod and God level characters.  The divinity dice are rolled separately and the highest die is added to the total successes.",
-        choices=DIVINITY_DICE_OPTIONS,
-        required=False,
-        default=0
-    )
 
 def get_tn(hero_type: str) -> int:
     if hero_type in {"Origin", "Hero"}:
@@ -170,13 +139,13 @@ async def on_application_command_error(interaction: nextcord.Interaction, error:
 @client.slash_command(name="dramatic_roll", description="Rolls a number of dice, adds in the enhancement and scale modifiers, then subtracts difficulty.")
 async def dramatic_roll(
     interaction: nextcord.Interaction,
-    dice_pool = dicepool_option(),
-    enhancement: int,
-    hero_type: str = hero_level_option(),
-    scale: int = scale_option(),
+    dice_pool = dicepool(),
+    enhancement= enhancement(),
+    hero_type: str = hero_level(),
+    scale: int = scale(),
     difficulty: int = 1,
-    divinity_dice: int = divinity_dice_option(),
-    again: int = 10,
+    divinity_dice: int = divinity_dice(),
+    again= again(),
 ):
     tn = get_tn(hero_type)
 
@@ -246,13 +215,13 @@ async def dramatic_roll(
 @client.slash_command(name="narrative_roll", description="Rolls a number of dice, adds in the enhancement and scale modifiers, then subtracts difficulty.")
 async def narrative_roll(
     interaction: nextcord.Interaction,
-    dice_pool: int,
-    enhancement: int,
-    hero_type: str = hero_level_option(),
-    scale: int = scale_option(),
+    dice_pool: int = dicepool(),
+    enhancement: int = enhancement(),
+    hero_type: str = hero_level(),
+    scale: int = scale(),
     difficulty: int = 1,
-    divinity_dice: int = divinity_dice_option(),
-    again: int = 10,
+    divinity_dice: int = divinity_dice(),
+    again: int = again(),
 ):
     tn = get_tn(hero_type)
 
@@ -363,17 +332,17 @@ async def initiative_roll(
 @client.slash_command(name="attack_antagonist", description="For use when attacking an antagonist.")
 async def attack_antagonist(
     interaction: nextcord.Interaction,
-    dice_pool: int,
-    enhancement: int,
+    dice_pool: int = dicepool(),
+    enhancement: int = enhancement(),
     defense: int = nextcord.SlashOption(
         name="defense",
         description="The defense value of the antagonist being attacked.",
         required=True
     ),
-    hero_type: str = hero_level_option(),
-    scale: int = scale_option(),
-    divinity_dice: int = divinity_dice_option(),
-    again: int = 10,
+    hero_type: str = hero_level(),
+    scale: int = scale(),
+    divinity_dice: int = divinity_dice(),
+    again: int = again(),
 ):
     tn = get_tn(hero_type)
 
@@ -448,22 +417,22 @@ async def attack_player(
     antagonist_name: str,
     character_name: str,
     player: nextcord.Member,
-    attacker_dice_pool: int,
+    attacker_dice_pool: int = dicepool(),
     enhancement: int,
     rollaway_cost: int = nextcord.SlashOption(
         name="rollaway_cost",
         description="Enter the roll away cost (attacker Composure or Defense)",
         required=True,
     ),
-    attacker_hero_type: str = hero_level_option("Choose the antagonist's level of power"),
+    attacker_hero_type: str = hero_level("Choose the antagonist's level of power"),
     attack_type: str = nextcord.SlashOption(
         name="attack_type",
         description="Choose the attack type",
         choices=["Melee", "Ranged"],
     ),
-    scale: int = scale_option(),
-    divinity_dice: int = divinity_dice_option(),
-    again: int = 10,
+    scale: int = scale(),
+    divinity_dice: int = divinity_dice(),
+    again: int = again(),
 ):
     tn = get_tn(attacker_hero_type)
     attack_params = {
