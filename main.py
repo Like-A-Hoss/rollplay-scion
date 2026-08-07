@@ -167,6 +167,17 @@ async def dramatic_roll(
     divinity_dice: int = RollOptions.divinity_dice(),
     again= RollOptions.again(),
 ):
+    try:
+        dice_pool = int(dice_pool)
+        enhancement = int(enhancement)
+        scale = int(scale)
+        difficulty = int(difficulty)
+        divinity_dice = int(divinity_dice)
+        again = int(again)
+    except (TypeError, ValueError):
+        await interaction.response.send_message("Please provide numeric values for the roll options.", ephemeral=True)
+        return
+
     tn = get_tn(hero_type)
 
     scion_dice = dice.ScionDice(
@@ -243,6 +254,17 @@ async def narrative_roll(
     divinity_dice: int = RollOptions.divinity_dice(),
     again: int = RollOptions.again(),
 ):
+    try:
+        dice_pool = int(dice_pool)
+        enhancement = int(enhancement)
+        scale = int(scale)
+        difficulty = int(difficulty)
+        divinity_dice = int(divinity_dice)
+        again = int(again)
+    except (TypeError, ValueError):
+        await interaction.response.send_message("Please provide numeric values for the roll options.", ephemeral=True)
+        return
+
     tn = get_tn(hero_type)
 
     scion_dice = dice.ScionDice(
