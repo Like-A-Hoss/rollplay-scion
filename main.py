@@ -418,7 +418,7 @@ async def attack_player(
     character_name: str,
     player: nextcord.Member,
     attacker_dice_pool: int = dicepool(),
-    enhancement: int,
+    enhancement: int = enhancement(),
     rollaway_cost: int = nextcord.SlashOption(
         name="rollaway_cost",
         description="Enter the roll away cost (attacker Composure or Defense)",
