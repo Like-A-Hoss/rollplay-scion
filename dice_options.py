@@ -3,8 +3,8 @@ import nextcord
 
 class RollOptions:
     HERO_LEVEL_CHOICES = ["Origin", "Hero", "Demigod", "God", "God Feat of Scale"]
-    SCALE_CHOICES = [0, 1, 2, 3, 4, 5, 6]
-    DIVINITY_DICE_CHOICES = list(range(0, 11))
+    SCALE_CHOICES = [str(i) for i in range(7)]
+    DIVINITY_DICE_CHOICES = [str(i) for i in range(11)]
 
     @staticmethod
     def dice_pool():
@@ -65,7 +65,7 @@ class RollOptions:
         return nextcord.SlashOption(
             name="again",
             description="The 'again' threshold for exploding dice (default 10).",
-            choices=[8, 9, 10],
+            choices=["8", "9", "10"],
             required=False,
             default=10,
         )
