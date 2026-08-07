@@ -19,7 +19,6 @@ class RollOptions:
         return nextcord.SlashOption(
             name="enhancement",
             description="Enhancement added to the roll (usually 0–3).",
-            required=True,
             default=0,
             required=True,
         )
