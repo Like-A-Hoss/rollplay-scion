@@ -27,7 +27,16 @@ client = commands.Bot(intents=intents)
 HERO_LEVEL_CHOICES = ["Origin", "Hero", "Demigod", "God", "God Feat of Scale"]
 SCALE_CHOICES = [0, 1, 2, 3, 4, 5, 6]
 HERO_TYPE_DESCRIPTION = "Choose the hero type, or antagonist power level"
+DIVINITY_DICE_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
+
+def dicepool_option():
+    description: str = "Enter the number of dice to roll, do not subtract divinity dice, there is a separate option to declare a number of dice as divinity dice."
+    return nextcord.SlashOption(
+        name="dice_pool",
+        description=description,
+        required=True,
+    )
 
 def hero_level_option(description: str = HERO_TYPE_DESCRIPTION):
     return nextcord.SlashOption(
@@ -43,7 +52,15 @@ def scale_option():
         description="Choose the difference in scale for the action",
         choices=SCALE_CHOICES,
     )
-
+    
+def divinity_dice_option():
+    return nextcord.SlashOption(
+        name="divinity_dice",
+        description="Enter the number of dice converted to divinity dice (0-10).  This is only used for Demigod and God level characters.  The divinity dice are rolled separately and the highest die is added to the total successes.",
+        choices=DIVINITY_DICE_OPTIONS,
+        required=False,
+        default=0
+    )
 
 def get_tn(hero_type: str) -> int:
     if hero_type in {"Origin", "Hero"}:
@@ -158,52 +175,68 @@ async def dramatic_roll(
     hero_type: str = hero_level_option(),
     scale: int = scale_option(),
     difficulty: int = 1,
+    divinity_dice: int = divinity_dice_option(),
     again: int = 10,
 ):
     tn = get_tn(hero_type)
 
     scion_dice = dice.ScionDice(
-        dice_pool=dice_pool,
+        dice_pool=dice_pool - divinity_dice,
         enhancement=enhancement,
         hero_type=hero_type,
         scale=scale,
         difficulty=difficulty,
         tn=tn,
+        divinity_dice=divinity_dice,
         again=again,
     )
-    results = scion_dice.roll()
+    results = scion_dice.roll() 
+    divine_results = scion_dice.roll_divinity()
     exploded_results = scion_dice.check_explode(results)
-    successes = scion_dice.count_successes(results, exploded_results)
+    divine_exploded_results = scion_dice.check_explode(divine_results)
+    exploded_results.extend(divine_exploded_results)
+    successes = scion_dice.count_successes(results, divine_results, exploded_results)
     message_maker = embed_message_maker.MessageMaker(hero_type=hero_type)
     botched = scion_dice.check_botch(results, exploded_results, successes)
     successes -= difficulty
+    divinity = True if divinity_dice > 0 else False
     if successes > 0:
         embed_response = message_maker.sucess_dramatic(
             interaction=interaction,
             results=results,
+            divine_results=divine_results,
             exploded_results=exploded_results,
             sux=successes,
             enhancement=enhancement,
             scale=scale,
             difficulty=difficulty,
+            divinity=divinity,
+            cs=scion_dice.check_catastrophic_success(divine_results),
         )
     else:
+        mortal_fail = scion_dice.check_mortal_fail(divine_results)
         if botched:
             embed_response = message_maker.botch_dramatic(
-                interaction=interaction,
-                results=results,
-                sux=successes,
-                difficulty=difficulty,
-            )
+                    interaction=interaction,
+                    results=results,
+                    divine_results=divine_results,
+                    sux=successes,
+                    difficulty=difficulty,
+                    divinity=divinity,
+                    mortal_fail=mortal_fail
+                )
         else:
             embed_response = message_maker.fail_dramatic(
                 interaction=interaction,
                 results=results,
+                divine_results=divine_results,
                 exploded_results=exploded_results,
                 sux=successes,
                 enhancement=enhancement,
                 scale=scale,
                 difficulty=difficulty,
+                divinity=divinity,
+                mf=mortal_fail,
             )
     
 
@@ -218,12 +251,13 @@ async def narrative_roll(
     hero_type: str = hero_level_option(),
     scale: int = scale_option(),
     difficulty: int = 1,
+    divinity_dice: int = divinity_dice_option(),
     again: int = 10,
 ):
     tn = get_tn(hero_type)
 
     scion_dice = dice.ScionDice(
-        dice_pool=dice_pool,
+        dice_pool=dice_pool-divinity_dice,
         enhancement=enhancement,
         hero_type=hero_type,
         scale=scale,
@@ -233,8 +267,11 @@ async def narrative_roll(
     )
 
     results = scion_dice.roll()
+    divine_results = scion_dice.roll_divinity()
     exploded_results = scion_dice.check_explode(results)
-    successes = scion_dice.count_narrative_successes(results, exploded_results)
+    divine_exploded_results = scion_dice.check_explode(divine_results)
+    exploded_results.extend(divine_exploded_results)
+    successes = scion_dice.count_narrative_successes(results, divine_results, exploded_results)
     botched = scion_dice.check_botch(results, exploded_results, successes)
     successes -= difficulty
     message_maker = embed_message_maker.MessageMaker(hero_type=hero_type)
@@ -242,29 +279,39 @@ async def narrative_roll(
         embed_response = message_maker.sucess_narrative(
             interaction=interaction,
             results=results,
+            divine_results=divine_results,
             exploded_results=exploded_results,
             sux=successes,
             enhancement=enhancement,
             scale=scale,
             difficulty=difficulty,
+            divinity=divinity_dice > 0,
+            cs=scion_dice.check_catastrophic_success(divine_results),
         )
     else:
+        divinity=True if divinity_dice > 0 else False
+        mortal_fail = scion_dice.check_mortal_fail(divine_results)
         if botched:
             embed_response = message_maker.botch_dramatic(
                 interaction=interaction,
                 results=results,
+                divine_results=divine_results,
                 sux=successes,
                 difficulty=difficulty,
+                divinity=divinity,
+                mortal_fail=mortal_fail
             )
         else:
-            embed_response = message_maker.fail_dramatic(
+            embed_response = message_maker.fail_narrative(
                 interaction=interaction,
                 results=results,
+                divine_results=divine_results,
                 exploded_results=exploded_results,
                 sux=successes,
                 enhancement=enhancement,
                 scale=scale,
                 difficulty=difficulty,
+                divinity=divinity,
             )
     
 
@@ -277,12 +324,14 @@ async def initiative_roll(
     enhancement: int,
     hero_type: str = hero_level_option(),
     scale: int = scale_option(),
+    divinity_dice: int = divinity_dice_option(),
     again: int = 10,
 ):
     tn = get_tn(hero_type)
 
     scion_dice = dice.ScionDice(
-        dice_pool=dice_pool,
+        dice_pool=dice_pool-divinity_dice,
+        divinity_dice=divinity_dice,
         enhancement=enhancement,
         hero_type=hero_type,
         scale=scale,
@@ -292,8 +341,11 @@ async def initiative_roll(
     )
 
     results = scion_dice.roll()
+    divine_results = scion_dice.roll_divinity()
     exploded_results = scion_dice.check_explode(results)
-    successes = scion_dice.count_successes(results, exploded_results)
+    divine_exploded_results = scion_dice.check_explode(divine_results)
+    exploded_results.extend(divine_exploded_results)
+    successes = scion_dice.count_successes(results, divine_results, exploded_results)
     botched = scion_dice.check_botch(results, exploded_results, successes)
     message_maker = embed_message_maker.MessageMaker(hero_type=hero_type)
     
@@ -320,12 +372,14 @@ async def attack_antagonist(
     ),
     hero_type: str = hero_level_option(),
     scale: int = scale_option(),
+    divinity_dice: int = divinity_dice_option(),
     again: int = 10,
 ):
     tn = get_tn(hero_type)
 
     scion_dice = dice.ScionDice(
-        dice_pool=dice_pool,
+        dice_pool=dice_pool-divinity_dice,
+        divinity_dice=divinity_dice,
         enhancement=enhancement,
         hero_type=hero_type,
         scale=scale,
@@ -334,46 +388,61 @@ async def attack_antagonist(
         again=again,
     )
     results = scion_dice.roll()
+    divine_results = scion_dice.roll_divinity()
     exploded_results = scion_dice.check_explode(results)
-    successes = scion_dice.count_successes(results, exploded_results)
+    divine_exploded_results = scion_dice.check_explode(divine_results)
+    exploded_results.extend(divine_exploded_results)
+    successes = scion_dice.count_successes(results, divine_results, exploded_results)
     botched = scion_dice.check_botch(results, exploded_results, successes)
     successes -= defense
     message_maker = embed_message_maker.MessageMaker(hero_type=hero_type)
+    divinity = True if divinity_dice > 0 else False
+    catastrophic_success = scion_dice.check_catastrophic_success(divine_results) if divinity else False
+    mortal_fail = scion_dice.check_mortal_fail(divine_results) if divinity else False
     if successes > 0:
         embed_response = message_maker.attack(
             interaction=interaction,
             results=results,
+            divine_results=divine_results,
             exploded_results=exploded_results,
             sux=successes,
             success="success",
             bonuses=f"Enhancement Bonus: +{enhancement}\nScale Bonus: +{scaleByFactor.dramatic_scale(scale)}extra successes",
-            defense=defense
+            defense=defense,
+            divinity=divinity,
+            divine_modifier=catastrophic_success,
         )
     else:
         if botched:
             embed_response = message_maker.attack(
                 interaction=interaction,
                 results=results,
+                divine_results=divine_results,
                 exploded_results=exploded_results,
                 sux=successes,
                 success="botch",
                 bonuses="No bonuses applied",
-                defense=defense
+                defense=defense,
+                divinity=divinity,
+                divine_modifier=mortal_fail,
             )
         else:
             embed_response = message_maker.attack(
                 interaction=interaction,
                 results=results,
+                divine_results=divine_results,
                 exploded_results = exploded_results,
                 sux=successes,
                 success="failure",
                 bonuses=f"Enhancement Bonus: +{enhancement}\nScale Bonus: +{scaleByFactor.dramatic_scale(scale)}extra successes",
-                defense=defense
+                defense=defense,
+                divinity=divinity,
+                divine_modifier=mortal_fail,
             )
     await interaction.response.send_message(embed=embed_response)
 
 
-@client.slash_command(name="attack_player",  description="For use when attacking a player.")
+@client.slash_command(name="attack_player", description="For use when attacking a player.")
 async def attack_player(
     interaction: nextcord.Interaction,
     antagonist_name: str,
@@ -393,6 +462,7 @@ async def attack_player(
         choices=["Melee", "Ranged"],
     ),
     scale: int = scale_option(),
+    divinity_dice: int = divinity_dice_option(),
     again: int = 10,
 ):
     tn = get_tn(attacker_hero_type)
@@ -404,6 +474,7 @@ async def attack_player(
         "difficulty": 0,
         "tn": tn,
         "again": again,
+        "divinity_dice": divinity_dice,
     }
 
     state_id = await reactive_defense.start_defense(

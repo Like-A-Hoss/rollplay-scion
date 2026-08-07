@@ -103,7 +103,9 @@ class ReflexiveRollModal(nextcord.ui.Modal):
         super().__init__("Reflexive Defense Roll")
         self.state_id = state_id
         self.add_item(nextcord.ui.TextInput(label="Dice pool (int)", placeholder="e.g. 3", required=True))
+        self.add_item(nextcord.ui.TextInput(label="How many of those are divinity dice?"))
         self.add_item(nextcord.ui.TextInput(label="Enhancement (int)", placeholder="e.g. 0", required=True))
+        self.add_item(nextcord.ui.TextInput(label="Scale (int)", placeholder="0-6", required=True))
         self.add_item(nextcord.ui.TextInput(label="Again (int)", placeholder="10", required=False))
 
     async def callback(self, interaction: Interaction):
@@ -115,45 +117,73 @@ class ReflexiveRollModal(nextcord.ui.Modal):
             await interaction.response.send_message("Invalid dice pool", ephemeral=True)
             return
         try:
-            enhancement = int(self.children[1].value)
+            divinity_dice = int(self.children[1].value) if self.children[1].value else 0
+        except Exception:
+            divinity_dice = 0
+        try:
+            enhancement = int(self.children[2].value)
         except Exception:
             enhancement = 0
         try:
-            again = int(self.children[2].value) if self.children[2].value else 10
+            scale = int(self.children[3].value) if self.children[3].value else 0
+        except Exception:
+            scale = 0
+        try:
+            again = int(self.children[4].value) if self.children[4].value else 10
         except Exception:
             again = 10
 
         hero_type = roll_info.get("hero_type", "Hero")
-        scale = roll_info.get("scale", 0)
+        if hero_type not in {"Demigod", "God", "God Feat of Scale", "God Feat of Strength"}:
+            divinity_dice = 0
+        divinity_dice = max(0, min(divinity_dice, dice_pool))
+        mortal_dice_pool = max(0, dice_pool - divinity_dice)
         roll_info.update({"dice_pool": dice_pool, "enhancement": enhancement, "again": again, "hero_type": hero_type, "scale": scale})
         data["roll_info"] = roll_info
 
-        tn = 8 if hero_type in {"Origin", "Hero"} else 7
+        if hero_type in {"Origin", "Hero"}:
+            tn = 8
+        elif hero_type in {"Demigod", "God"}:
+            tn = 7
+        else:
+            tn = 6
         scion = dice.ScionDice(
-            dice_pool=dice_pool,
+            dice_pool=mortal_dice_pool,
             enhancement=enhancement,
             hero_type=hero_type,
             scale=scale,
             difficulty=0,
+            divinity_dice=divinity_dice,
             tn=tn,
             again=again,
         )
         results = scion.roll()
+        divine_results = scion.roll_divinity()
         exploded = scion.check_explode(results)
-        successes = scion.count_successes(results, exploded)
+        divine_exploded = scion.check_explode(divine_results)
+        exploded.extend(divine_exploded)
+        successes = scion.count_successes(results, divine_results, exploded)
         botch = scion.check_botch(results, exploded, successes)
+        catastrophic_success = scion.check_catastrophic_success(divine_results) if divinity_dice > 0 else False
+        mortal_failure = scion.check_mortal_fail(divine_results) if divinity_dice > 0 else False
 
         data["defense_roll"] = {
-            "dice_pool": dice_pool,
+            "dice_pool": mortal_dice_pool,
+            "total_dice_pool": dice_pool,
+            "divinity_dice": divinity_dice,
             "enhancement": enhancement,
             "hero_type": hero_type,
             "scale": scale,
             "again": again,
             "results": results,
+            "divine_results": divine_results,
             "exploded": exploded,
             "successes": successes,
             "generated_successes": successes,
             "botch": botch,
+            "divinity": divinity_dice > 0,
+            "catastrophic_success": catastrophic_success,
+            "mortal_failure": mortal_failure,
         }
         data["stunt_choice"] = None
         data["defense_spent"] = None
@@ -164,7 +194,12 @@ class ReflexiveRollModal(nextcord.ui.Modal):
         data["cover_hard_armor"] = int(data.get("cover_hard_armor", 0) or 0)
         _write_state(self.state_id, data)
         _set_status(self.state_id, "collecting_reflexive_stunt")
-        _queue_debug_log(interaction.client, "reflexive_roll_complete", self.state_id, f"successes={successes}; botch={botch}")
+        _queue_debug_log(
+            interaction.client,
+            "reflexive_roll_complete",
+            self.state_id,
+            f"successes={successes}; botch={botch}; divinity_dice={divinity_dice}",
+        )
 
         await interaction.response.edit_message(embed=_get_state_embed(data, "Configure Reflexive Stunts"), view=ReflexiveStuntView(self.state_id))
 

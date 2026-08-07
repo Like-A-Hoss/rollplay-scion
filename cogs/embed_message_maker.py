@@ -41,6 +41,8 @@ class MessageMaker():
             "Have you considered worshipping the Omnissiah?  He might be able to help you with your rolls.",
             "I think you need to take a break from rolling, maybe go outside and get some sun, touch some grass, walk into a mushroom ring and make a deal with some fey.  Can't be any worse."
             ]
+        self.cs_message = "You have triggered a Catastrophic Success!  See Demigod Page 154 for details."
+        self.mf_message = "You have triggered a Mortal Failure!  See Demigod Page 154 for details."
 
     
     def diceReader(self, results):
@@ -86,12 +88,18 @@ class MessageMaker():
                 message += " "
         return message
     
-    def sucess_dramatic(self, interaction:nextcord.Interaction, results, exploded_results, sux, enhancement, scale, difficulty):
+    def sucess_dramatic(self, interaction:nextcord.Interaction, results, divine_results, exploded_results, sux, enhancement, scale, difficulty, divinity:bool = False, cs:bool = False, divine_sux:int = 0):
             dice = self.diceReader(results)
+            divine_dice = self.diceReader(divine_results)
             exploded_dice = self.diceReader(exploded_results)
-            embed_response = nextcord.Embed(color=0x00ff55,title="SUCCESS", url = self.link_social, description="rolled dice: " + dice + "\n" + "exploded dice: " + exploded_dice)
+            divine_dice_description = f"rolled dice: {dice}\ndivine dice: {divine_dice}\nexploded dice: {exploded_dice}"
+            standard_dice_description = f"rolled dice: {dice}\nexploded dice: {exploded_dice}"
+            success_description = divine_dice_description if divinity else standard_dice_description
+            embed_response = nextcord.Embed(color=0x00ff55,title="SUCCESS", url = self.link_social, description=success_description)
             embed_response.set_author(name= interaction.user.name)
             embed_response.add_field(name="Successes", value=f"You had {sux} net successes",inline=True)
+            if divinity == True and cs == True:
+                embed_response.add_field(name="Catastrophic Successes", value=self.cs_message, inline=True)
             embed_response.add_field(name="success message", value=f"{random.choice(self.sucess_message)}", inline=False)
             embed_response.add_field(name="enhancement", value=f"enhancement bonus of {enhancement}", inline=True)
             embed_response.add_field(name="scale", value=f"scale enhancement of {scaleByFactor.dramatic_scale(scale)}", inline=True)
@@ -99,12 +107,18 @@ class MessageMaker():
             embed_response.add_field(name = self.link_footer, value=self.footer_text)
             embed_response.set_footer(text = self.true_footer)
             return embed_response
-    def sucess_narrative(self, interaction:nextcord.Interaction, results, exploded_results, sux, enhancement, scale, difficulty):
+    def sucess_narrative(self, interaction:nextcord.Interaction, results, divine_results, exploded_results, sux, enhancement, scale, difficulty, divinity:bool = False, cs:bool = False):
                 dice = self.diceReader(results)
                 exploded_dice = self.diceReader(exploded_results)
-                embed_response = nextcord.Embed(color=0x00ff55,title="SUCCESS", url = self.link_social, description="rolled dice: " + dice + "\n" + "exploded dice: " + exploded_dice)
+                divine_dice = self.diceReader(divine_results)
+                divine_dice_description = f"rolled dice: {dice}\ndivine dice: {divine_dice}\nexploded dice: {exploded_dice}"
+                standard_dice_description = f"rolled dice: {dice}\nexploded dice: {exploded_dice}"
+                description = divine_dice_description if divinity else standard_dice_description
+                embed_response = nextcord.Embed(color=0x00ff55,title="SUCCESS", url = self.link_social, description=description)
                 embed_response.set_author(name= interaction.user.name)
                 embed_response.add_field(name="Successes", value=f"You had {sux} successes",inline=True)
+                if divinity == True and cs == True:
+                    embed_response.add_field(name="Catastrophic Successes", value=self.cs_message, inline=False)
                 embed_response.add_field(name="success message", value=f"{random.choice(self.sucess_message)}", inline=False)
                 embed_response.add_field(name="enhancement", value=f"enhancement bonus of {enhancement}", inline=True)
                 embed_response.add_field(name="scale", value=f"scale multiplier of x{scaleByFactor.narrative_scale(scale)}", inline=True)
@@ -114,10 +128,14 @@ class MessageMaker():
                 return embed_response
             
     
-    def fail_dramatic(self, interaction:nextcord.Interaction, results, exploded_results, sux, enhancement, scale, difficulty):
+    def fail_dramatic(self, interaction:nextcord.Interaction, results, divine_results, exploded_results, sux, enhancement, scale, difficulty, divinity:bool = False, mf:bool = False):
         dice = self.diceReader(results)
         exploded_dice = self.diceReader(exploded_results)
-        embed_response = nextcord.Embed(color=0xcc0000,title="Fail", url = self.link_social, description=dice + "\n" + "exploded dice: " + exploded_dice)
+        divine_dice = self.diceReader(divine_results)
+        divine_dice_description = f"rolled dice: {dice}\ndivine dice: {divine_dice}\nexploded dice: {exploded_dice}"
+        standard_dice_description = f"rolled dice: {dice}\nexploded dice: {exploded_dice}"
+        description = divine_dice_description if divinity else standard_dice_description
+        embed_response = nextcord.Embed(color=0xcc0000,title="Fail", url = self.link_social, description=description)
         embed_response.set_author(name= interaction.user.name)
         embed_response.add_field(name="Failure", value=random.choice(self.fail_message),inline=False)
         embed_response.add_field(name="Successes", value=f"you had {sux} successes", inline=True)
@@ -128,10 +146,14 @@ class MessageMaker():
         embed_response.set_footer(text = self.true_footer)
         return embed_response
     
-    def fail_narrative(self, interaction:nextcord.Interaction, results, exploded_results, sux, enhancement, scale, difficulty):
+    def fail_narrative(self, interaction:nextcord.Interaction, results, divine_results, exploded_results, sux, enhancement, scale, difficulty, divinity:bool = False):
             dice = self.diceReader(results)
             exploded_dice = self.diceReader(exploded_results)
-            embed_response = nextcord.Embed(color=0xcc0000,title="Fail", url = self.link_social, description=dice + "\n" + "exploded dice: " + exploded_dice)
+            divine_dice = self.diceReader(divine_results)
+            divine_dice_description = f"rolled dice: {dice}\ndivine dice: {divine_dice}\nexploded dice: {exploded_dice}"
+            standard_dice_description = f"rolled dice: {dice}\nexploded dice: {exploded_dice}"
+            description = divine_dice_description if divinity else standard_dice_description
+            embed_response = nextcord.Embed(color=0xcc0000,title="Fail", url = self.link_social, description=description)
             embed_response.set_author(name= interaction.user.name)
             embed_response.add_field(name="Failure", value=random.choice(self.fail_message),inline=False)
             embed_response.add_field(name="Successes", value=f"you had {sux} successes", inline=True)
@@ -142,11 +164,17 @@ class MessageMaker():
             embed_response.set_footer(text = self.true_footer)
             return embed_response
     
-    def botch_dramatic(self, interaction:nextcord.Interaction, results, sux, difficulty):
+    def botch_dramatic(self, interaction:nextcord.Interaction, results, divine_results, sux, difficulty, divinity:bool = False, mortal_fail:bool = False):
         dice = self.diceReader(results)
-        embed_response = nextcord.Embed(color=0xcc6600,title="Botch", url = self.link_social, description=dice)
+        divine_dice = self.diceReader(divine_results)
+        divine_dice_description = f"rolled dice: {dice}\ndivine dice: {divine_dice}"
+        standard_dice_description = f"rolled dice: {dice}"
+        description = divine_dice_description if divinity else standard_dice_description
+        embed_response = nextcord.Embed(color=0xcc6600,title="Botch", url = self.link_social, description=description)
         embed_response.set_author(name= interaction.user.name)
         embed_response.add_field(name="Botched", value=random.choice(self.botch_message),inline=False)
+        if divinity == True and mortal_fail == True:
+            embed_response.add_field(name="Mortal Failure", value=self.mf_message, inline=True)
         embed_response.add_field(name="Successes", value=f"you had {sux} successes and at least one 1", inline=True)
         embed_response.add_field(name="difficulty", value=f"difficulty of {difficulty}", inline=False)
         embed_response.add_field(name = self.link_footer, value=self.footer_text)
@@ -164,70 +192,126 @@ class MessageMaker():
         embed_response.set_footer(text = self.true_footer)
         return embed_response    
     
-    def attack(self, interaction:nextcord.Interaction, results, exploded_results, sux, success, bonuses, defense):
+    def attack(self, interaction:nextcord.Interaction, results, divine_results, exploded_results, sux, success, bonuses, defense, divinity:bool = False, divine_modifier:bool = False):
+        dice = self.diceReader(results)
+        divine_dice = self.diceReader(divine_results)
+        exploded_dice = self.diceReader(exploded_results)
+        divine_dice_description = f"rolled dice: {dice}\ndivine dice: {divine_dice}\nexploded dice: {exploded_dice}"
+        standard_dice_description = f"rolled dice: {dice}\nexploded dice: {exploded_dice}"
+        description = divine_dice_description if divinity else standard_dice_description
         if success == "success":
-            dice = self.diceReader(results)
-            exploded_dice = self.diceReader(exploded_results)
-            embed_response = nextcord.Embed(color=0x00ff55,title="SUCCESS", url = self.link_social, description=f"{dice} + {exploded_dice}")
+            embed_response = nextcord.Embed(color=0x00ff55,title="SUCCESS", url = self.link_social, description=description)
             embed_response.set_author(name= interaction.user.name)
             embed_response.add_field(name="Successes", value=f"You have {sux} net successes against defense {defense}",inline=False)
             embed_response.add_field(name="bonuses", value=bonuses, inline=False)
+            if divinity == True and divine_modifier == True:
+                embed_response.add_field(name="Catastrophic Success", value=self.cs_message, inline=False)
+            embed_response.add_field(name=" ", value=random.choice(self.sucess_message),inline=False)
             embed_response.add_field(name = self.link_footer, value=self.footer_text)
             embed_response.set_footer(text = self.true_footer)
             return embed_response
         elif success == "failure":
-            dice = self.diceReader(results)
-            exploded_dice = self.diceReader(exploded_results)
-            embed_response = nextcord.Embed(color=0xcc0000,title="FAIL", url = self.link_social, description=f"{dice} + {exploded_dice}")
+            embed_response = nextcord.Embed(color=0xcc0000,title="FAIL", url = self.link_social, description=description)
             embed_response.set_author(name= interaction.user.name)
-            embed_response.add_field(name="Fail", value=f"You had {sux} against defense {defense}",inline=False)
-            embed_response.add_field(name="bonuses", value=bonuses, inline=False)
+            embed_response.add_field(name="Miss", value=f"You had {sux} against defense {defense}",inline=False)
+            if divinity == True and divine_modifier == True:
+                embed_response.add_field(name="Mortal Failure", value=self.mf_message, inline=False)
+            embed_response.add_field(name="Bonuses", value=bonuses, inline=False)
             embed_response.add_field(name = self.link_footer, value=self.footer_text)
             embed_response.set_footer(text = self.true_footer)
             return embed_response
         else:
-            dice = self.diceReader(results)
-            embed_response = nextcord.Embed(color=0xcc6600, title="BOTCHED", url = self.link_social, description=dice)
+            embed_response = nextcord.Embed(color=0xcc6600, title="BOTCHED", url = self.link_social, description=description)
             embed_response.set_author(name= interaction.user.name)
             embed_response.add_field(name=" ", value=random.choice(self.botch_message),inline=False)
             embed_response.add_field(name="Botch", value=f"You had {sux} and rolled a 1.  You botched the attack against defense {defense}",inline=False)
+            if divinity == True and divine_modifier == True:
+                embed_response.add_field(name="Mortal Failure", value=self.mf_message, inline=False)
             embed_response.add_field(name="bonuses", value=bonuses, inline=False)
             embed_response.add_field(name = self.link_footer, value=self.footer_text)
             embed_response.set_footer(text = self.true_footer)
             return embed_response
         
-    def attack_player_success(self, interaction:nextcord.Interaction, character, results, exploded_results, sux, success, bonuses, defense, stunt_choice, armor):
-        if success == "success":
-            dice = self.diceReader(results)
-            exploded_dice = self.diceReader(exploded_results)
-            embed_response = nextcord.Embed(color=0x00ff55,title="Hit", url = self.link_social, description=f"{dice} + {exploded_dice}")
-            embed_response.set_author(name= interaction.user.name)
-            embed_response.add_field(name="Successes", value=f"You have {sux} net successes against defense {defense}",inline=False)
-            embed_response.add_field(name="bonuses", value=bonuses, inline=False)
-            embed_response.add_field(name="stunt choice", value=stunt_choice, inline=True)
-            embed_response.add_field(name="armor", value=f"{character} has \n Soft: {armor.get('soft',0)}, Hard: {armor.get('hard',0)}", inline=True)
-            if "Dive for Cover" in stunt_choice:
-                embed_response.add_field(name="Cover Armor", value=f"{character} is behind  {armor.get('cover_hard',0)}", inline=True)
-            embed_response.add_field(name = self.link_footer, value=self.footer_text, inline=False)
-            embed_response.set_footer(text = self.true_footer)
-            return embed_response
-    def attack_player_fail(self, interaction:nextcord.Interaction, character, results, exploded_results, sux, success, bonuses, defense):
+    def attack_player_success(
+        self,
+        interaction: nextcord.Interaction,
+        character,
+        results,
+        divine_results,
+        exploded_results,
+        sux,
+        bonuses,
+        defense,
+        stunt_choice,
+        armor,
+        divinity: bool = False,
+        divine_modifier: bool = False,
+    ):
+        dice = self.diceReader(results)
+        divine_dice = self.diceReader(divine_results)
+        exploded_dice = self.diceReader(exploded_results)
+        divine_dice_description = f"rolled dice: {dice}\ndivine dice: {divine_dice}\nexploded dice: {exploded_dice}"
+        standard_dice_description = f"rolled dice: {dice}\nexploded dice: {exploded_dice}"
+        description = divine_dice_description if divinity else standard_dice_description
+        embed_response = nextcord.Embed(color=0x00ff55, title="Hit", url=self.link_social, description=description)
+        embed_response.set_author(name=interaction.user.name)
+        embed_response.add_field(name="Hit", value=f"You have {sux} net successes against defense {defense}", inline=False)
+        if divinity and divine_modifier:
+            embed_response.add_field(name="Catastrophic Success", value=self.cs_message, inline=False)
+        embed_response.add_field(name="bonuses", value=bonuses, inline=False)
+        embed_response.add_field(name="stunt choice", value=str(stunt_choice or "none"), inline=True)
+        embed_response.add_field(
+            name="armor",
+            value=f"{character} has \n Soft: {armor.get('soft', 0)}, Hard: {armor.get('hard', 0)}",
+            inline=True,
+        )
+        if stunt_choice == "dive_for_cover":
+            embed_response.add_field(
+                name="Cover Armor",
+                value=f"{character} is behind hard cover {armor.get('cover_hard', 0)}",
+                inline=True,
+            )
+        embed_response.add_field(name=self.link_footer, value=self.footer_text, inline=False)
+        embed_response.set_footer(text=self.true_footer)
+        return embed_response
+
+    def attack_player_fail(
+        self,
+        interaction: nextcord.Interaction,
+        character,
+        results,
+        divine_results,
+        exploded_results,
+        sux,
+        success,
+        bonuses,
+        defense,
+        divinity: bool = False,
+        divine_modifier: bool = False,
+    ):
+        dice = self.diceReader(results)
+        divine_dice = self.diceReader(divine_results)
+        exploded_dice = self.diceReader(exploded_results)
+        divine_dice_description = f"rolled dice: {dice}\ndivine dice: {divine_dice}\nexploded dice: {exploded_dice}"
+        standard_dice_description = f"rolled dice: {dice}\nexploded dice: {exploded_dice}"
+        description = divine_dice_description if divinity else standard_dice_description
         if success == "failure":
-            dice = self.diceReader(results)
-            exploded_dice = self.diceReader(exploded_results)
-            embed_response = nextcord.Embed(color=0xcc0000,title="Miss", url = self.link_social, description=f"{dice} + {exploded_dice}")
+            embed_response = nextcord.Embed(color=0xcc0000,title="Miss", url = self.link_social, description=description)
             embed_response.set_author(name= interaction.user.name)
-            embed_response.add_field(name="Fail", value=f"You had {sux} against {character}'s defense {defense}",inline=False)
-            embed_response.add_field(name="bonuses", value=bonuses, inline=False)
+            embed_response.add_field(name="Miss", value=f"You had {sux} against {character}'s defense {defense}",inline=False)
+            if divinity == True and divine_modifier == True:
+                embed_response.add_field(name="Mortal Failure", value=self.mf_message, inline=False)
+            embed_response.add_field(name="Bonuses", value=bonuses, inline=False)
             embed_response.add_field(name = self.link_footer, value=self.footer_text, inline=False)
             embed_response.set_footer(text = self.true_footer)
             return embed_response
         if success == "botch":
-            dice = self.diceReader(results)
-            embed_response = nextcord.Embed(color=0xcc6600, title="BOTCHED", url = self.link_social, description=dice)
+            embed_response = nextcord.Embed(color=0xcc6600, title="BOTCHED", url = self.link_social, description=description)
             embed_response.set_author(name= interaction.user.name)
             embed_response.add_field(name=" ", value=random.choice(self.botch_message),inline=False)
             embed_response.add_field(name="Botch", value=f"You had {sux} and rolled a 1.  You botched the attack against {character}'s defense {defense}",inline=False)
+            if divinity == True and divine_modifier == True:
+                embed_response.add_field(name="Mortal Failure", value=self.mf_message, inline=False)
             embed_response.add_field(name="bonuses", value=bonuses, inline=False)
             embed_response.add_field(name = self.link_footer, value=self.footer_text, inline=False)
             embed_response.set_footer(text = self.true_footer)

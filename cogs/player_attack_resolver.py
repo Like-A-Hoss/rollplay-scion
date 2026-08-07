@@ -23,20 +23,33 @@ async def resolve_player_attack_state(
     if not attack_params:
         return False, "Attack data missing from state."
 
+    hero_type = attack_params.get("hero_type", "Hero")
+    raw_pool = int(attack_params.get("dice_pool", 0) or 0)
+    raw_divinity = int(attack_params.get("divinity_dice", 0) or 0)
+    divinity_allowed = hero_type in {"Demigod", "God", "God Feat of Scale", "God Feat of Strength"}
+    divinity_dice = max(0, min(raw_divinity, raw_pool)) if divinity_allowed else 0
+    mortal_dice_pool = max(0, raw_pool - divinity_dice)
+
     scion_dice = dice.ScionDice(
-        dice_pool=int(attack_params.get("dice_pool", 0) or 0),
+        dice_pool=mortal_dice_pool,
         enhancement=int(attack_params.get("enhancement", 0) or 0),
-        hero_type=attack_params.get("hero_type", "Hero"),
+        hero_type=hero_type,
         scale=int(attack_params.get("scale", 0) or 0),
         difficulty=int(state.get("final_defense", 1) or 1),
+        divinity_dice=divinity_dice,
         tn=int(attack_params.get("tn", 8) or 8),
         again=int(attack_params.get("again", 10) or 10),
     )
 
     results = scion_dice.roll()
+    divine_results = scion_dice.roll_divinity()
     exploded_results = scion_dice.check_explode(results)
-    attack_successes = scion_dice.count_successes(results, exploded_results)
+    divine_exploded_results = scion_dice.check_explode(divine_results)
+    exploded_results.extend(divine_exploded_results)
+    attack_successes = scion_dice.count_successes(results, divine_results, exploded_results)
     botched = scion_dice.check_botch(results, exploded_results, attack_successes)
+    catastrophic_success = scion_dice.check_catastrophic_success(divine_results) if divinity_dice > 0 else False
+    mortal_failure = scion_dice.check_mortal_fail(divine_results) if divinity_dice > 0 else False
 
     final_defense = int(state.get("final_defense", 1) or 1)
     remaining = attack_successes
@@ -55,35 +68,45 @@ async def resolve_player_attack_state(
             character=state.get("character_name", "Unknown"),
             interaction=interaction,
             results=results,
+            divine_results=divine_results,
             exploded_results=exploded_results,
             sux=attack_successes,
             success="botch",
             bonuses="No bonuses applied",
             defense=final_defense,
+            divinity=divinity_dice > 0,
+            divine_modifier=mortal_failure,
         )
     elif result_type == "success":
+        armor_data = dict(state.get("armor", {}))
+        armor_data["cover_hard"] = int(state.get("cover_hard_armor", 0) or 0)
         embed_response = message_maker.attack_player_success(
             interaction=interaction,
+            character=state.get("character_name", "Unknown"),
             results=results,
+            divine_results=divine_results,
             exploded_results=exploded_results,
             sux=remaining,
-            success="success",
             bonuses=f"Enhancement Bonus: +{attack_params.get('enhancement', 0)}\\nScale Bonus: +{attack_params.get('scale', 0)}",
             defense=final_defense,
             stunt_choice=state.get("stunt_choice"),
-            armor=state.get("armor", {}),
-            character=state.get("character_name", "Unknown"),
+            armor=armor_data,
+            divinity=divinity_dice > 0,
+            divine_modifier=catastrophic_success,
         )
     else:
         embed_response = message_maker.attack_player_fail(
             character=state.get("character_name", "Unknown"),
             interaction=interaction,
             results=results,
+            divine_results=divine_results,
             exploded_results=exploded_results,
             sux=0,
             success="failure",
             bonuses=f"Enhancement Bonus: +{attack_params.get('enhancement', 0)}\\nScale Bonus: +{attack_params.get('scale', 0)}",
             defense=final_defense,
+            divinity=divinity_dice > 0,
+            divine_modifier=mortal_failure,
         )
 
     channel_id = attack.get("channel_id")
