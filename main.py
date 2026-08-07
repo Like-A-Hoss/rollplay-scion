@@ -170,7 +170,7 @@ async def on_application_command_error(interaction: nextcord.Interaction, error:
 @client.slash_command(name="dramatic_roll", description="Rolls a number of dice, adds in the enhancement and scale modifiers, then subtracts difficulty.")
 async def dramatic_roll(
     interaction: nextcord.Interaction,
-    dice_pool: int,
+    dice_pool = dicepool_option(),
     enhancement: int,
     hero_type: str = hero_level_option(),
     scale: int = scale_option(),
