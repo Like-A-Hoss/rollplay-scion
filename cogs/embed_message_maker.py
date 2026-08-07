@@ -1,6 +1,7 @@
 import random
 import nextcord
 from . import scaleByFactor
+from ..settings import TESTING_SERVER
 
 
 class MessageMaker():
@@ -348,7 +349,8 @@ class MessageMaker():
             value="Starts the attack process.  The Story Guide fills out the attack information including the name of the NPC Attacking, and the PC being attacked, and the players discord ID can then be chosen.  The player is notified and allowed to roll their defense and select defensive stunts.  The Story Guide is then notified with the results of their roll, and what stunts the defending player has and their armor values.",
             inline=False,
         )
-        embed_response.add_field(
+        if interaction.guild == TESTING_SERVER:
+            embed_response.add_field(
             name="/resolve_attack",
             value="finalizes the attack process, shows the results of the attack and the defense, and any information about stunts and armor that may help the story guide resolve the attack..",
             inline=False,
