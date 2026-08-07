@@ -15,7 +15,7 @@ from cogs.player_attack_resolver import resolve_player_attack_state
 import cogs.dice as dice
 import cogs.embed_message_maker as embed_message_maker
 import cogs.reactive_defense as reactive_defense
-from dice_options import dicepool_option as dicepool, hero_level_option as hero_level, scale_option as scale, divinity_dice_option as divinity_dice, again_option as again, enhancement_option as enhancement
+from dice_options import dicepool as dicepool, hero_level as hero_level, scale as scale, divinity_dice as divinity_dice, again as again, enhancement as enhancement
 
 
 intents = nextcord.Intents.default()
