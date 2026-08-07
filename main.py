@@ -7,14 +7,14 @@ import nextcord
 from nextcord.ext import commands
 import traceback
 
-from cogs import scaleByFactor
+from rollplay_scion.cogs import scaleByFactor
 from settings import SECRET_KEY as SECRET_KEY
 from settings import TESTING_SERVER as testingServerID
 from settings import REACTIVE_DEFENSE_LOG_CHANNEL as reactiveDefenseLogChannel
-from cogs.player_attack_resolver import resolve_player_attack_state
-import cogs.dice as dice
-import cogs.embed_message_maker as embed_message_maker
-import cogs.reactive_defense as reactive_defense
+from rollplay_scion.cogs.player_attack_resolver import resolve_player_attack_state
+import rollplay_scion.cogs.dice as dice
+import rollplay_scion.cogs.embed_message_maker as embed_message_maker
+import rollplay_scion.cogs.reactive_defense as reactive_defense
 from dice_options import RollOptions as RollOptions
 
 
