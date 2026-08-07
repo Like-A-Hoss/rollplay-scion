@@ -1,5 +1,9 @@
 import random
-from . import scaleByFactor
+
+try:
+    from . import scaleByFactor
+except ImportError:
+    import scaleByFactor
 
 class ScionDice():
     def __init__(self, dice_pool:int, enhancement:int, hero_type:str, scale:int, difficulty:int, divinity_dice:int, tn:int, again:int):

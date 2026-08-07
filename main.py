@@ -3,11 +3,18 @@ try:
 except ModuleNotFoundError:
     import audioop_lts as audioop  # type: ignore
 
-import nextcord
-from nextcord.ext import commands
+import os
+import sys
 import traceback
 
-try:
+import nextcord
+from nextcord.ext import commands
+
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
+if __package__:
     from .dice_options import RollOptions as RollOptions
     from .settings import SECRET_KEY as SECRET_KEY
     from .settings import TESTING_SERVER as testingServerID
@@ -17,7 +24,7 @@ try:
     from .cogs import dice as dice
     from .cogs import embed_message_maker as embed_message_maker
     from .cogs import reactive_defense as reactive_defense
-except ImportError:
+else:
     from dice_options import RollOptions as RollOptions
     from settings import SECRET_KEY as SECRET_KEY
     from settings import TESTING_SERVER as testingServerID

@@ -1,8 +1,17 @@
-import boto3
+import os
 
-ssm = boto3.client('ssm', region_name='us-east-2')
+import boto3
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 def get_parameter(name):
+    env_value = os.getenv(name)
+    if env_value:
+        return env_value
+
+    ssm = boto3.client('ssm', region_name=os.getenv('AWS_REGION', 'us-east-2'))
     return ssm.get_parameter(
         Name=f"/rollplay-scion/{name}",
         WithDecryption=True
@@ -14,15 +23,16 @@ def get_optional_parameter(name, default=None):
         return get_parameter(name)
     except Exception:
         return default
+
 # Fetch bot token
-SECRET_KEY = get_parameter('SECRET_KEY')
+SECRET_KEY = get_optional_parameter('SECRET_KEY', default=os.getenv('SECRET_KEY'))
 
 # Fetch test server ID
-TESTING_SERVER = get_parameter('TESTING_SERVER')
+TESTING_SERVER = get_optional_parameter('TESTING_SERVER', default=os.getenv('TESTING_SERVER'))
 
 # Optional channel ID for reactive defense debug logs.
 # Falls back to the testing channel if the SSM parameter is not set.
 REACTIVE_DEFENSE_LOG_CHANNEL = get_optional_parameter(
     'REACTIVE_DEFENSE_LOG_CHANNEL',
-    default='1001211424615448607'
+    default=os.getenv('REACTIVE_DEFENSE_LOG_CHANNEL', '1001211424615448607')
 )

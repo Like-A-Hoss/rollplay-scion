@@ -1,8 +1,13 @@
 import nextcord
 
-import cogs.dice as dice
-import cogs.embed_message_maker as embed_message_maker
-from .reactive_json import _read_state, _delete_state, _set_status
+try:
+    from . import dice as dice
+    from . import embed_message_maker as embed_message_maker
+    from .reactive_json import _read_state, _delete_state, _set_status
+except ImportError:
+    import cogs.dice as dice
+    import cogs.embed_message_maker as embed_message_maker
+    from cogs.reactive_json import _read_state, _delete_state, _set_status
 
 
 async def resolve_player_attack_state(

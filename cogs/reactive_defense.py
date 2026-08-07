@@ -6,11 +6,18 @@ import traceback
 import nextcord
 from nextcord import Interaction
 
-import cogs.dice as dice
-from settings import REACTIVE_DEFENSE_LOG_CHANNEL
-from .reactive_json import _read_state, _write_state, _set_status
-from .reactive_embeds import _get_state_embed
-from .player_attack_resolver import resolve_player_attack_state
+try:
+    from . import dice as dice
+    from .reactive_json import _read_state, _write_state, _set_status
+    from .reactive_embeds import _get_state_embed
+    from .player_attack_resolver import resolve_player_attack_state
+    from ..settings import REACTIVE_DEFENSE_LOG_CHANNEL
+except ImportError:
+    import cogs.dice as dice
+    from settings import REACTIVE_DEFENSE_LOG_CHANNEL
+    from cogs.reactive_json import _read_state, _write_state, _set_status
+    from cogs.reactive_embeds import _get_state_embed
+    from cogs.player_attack_resolver import resolve_player_attack_state
 
 
 _DEBUG_TASKS: set[asyncio.Task] = set()

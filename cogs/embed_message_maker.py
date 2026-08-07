@@ -1,7 +1,12 @@
 import random
 import nextcord
-from . import scaleByFactor
-from ..settings import TESTING_SERVER
+
+try:
+    from . import scaleByFactor
+    from ..settings import TESTING_SERVER
+except ImportError:
+    import scaleByFactor
+    from settings import TESTING_SERVER
 
 
 class MessageMaker():
